@@ -1,137 +1,199 @@
-##
-## This file is part of the libopenstm32 project.
-##
-## Copyright (C) 2009 Uwe Hermann <uwe@hermann-uwe.de>
-##
-## This program is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published by
-## the Free Software Foundation, either version 3 of the License, or
-## (at your option) any later version.
-##
-## This program is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-## GNU General Public License for more details.
-##
-## You should have received a copy of the GNU General Public License
-## along with this program.  If not, see <http://www.gnu.org/licenses/>.
-##
+##############################################################################
+# Build global options
+# NOTE: Can be overridden externally.
+#
 
-OUT_DIR  = obj
-space :=
-space +=
-PREFIX		?= arm-none-eabi
-CONTROL     ?= SINE
-CONTROLLC   := $(shell echo $(CONTROL) | tr A-Z a-z)
-BINARY		= stm32_$(CONTROLLC)
-SIZE  = $(PREFIX)-size
-CC		= $(PREFIX)-gcc
-CPP	= $(PREFIX)-g++
-LD		= $(PREFIX)-gcc
-OBJCOPY		= $(PREFIX)-objcopy
-OBJDUMP		= $(PREFIX)-objdump
-MKDIR_P     = mkdir -p
-TERMINAL_DEBUG ?= 0
-CFLAGS		= -Os -Wall -Wextra -Iinclude/ -Ilibopeninv/include -Ilibopencm3/include \
-             -fno-common -fno-builtin -pedantic -DSTM32F1 -DT_DEBUG=$(TERMINAL_DEBUG) \
-             -DCONTROL=CTRL_$(CONTROL) -DCTRL_SINE=0 -DCTRL_FOC=1 \
-				 -mcpu=cortex-m3 -mthumb -std=gnu99 -ffunction-sections -fdata-sections
-CPPFLAGS    = -Os -Wall -Wextra -Iinclude/ -Ilibopeninv/include -Ilibopencm3/include \
-            -fno-common -std=c++11 -pedantic -DSTM32F1 -DT_DEBUG=$(TERMINAL_DEBUG) \
-             -DCONTROL=CTRL_$(CONTROL) -DCTRL_SINE=0 -DCTRL_FOC=1 \
-				-ffunction-sections -fdata-sections -fno-builtin -fno-rtti -fno-exceptions -fno-unwind-tables -mcpu=cortex-m3 -mthumb
-LDSCRIPT	= stm32_sine.ld
-LDFLAGS  = -Llibopencm3/lib -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections,-Map,linker.map
-OBJSL		= stm32_sine.o hwinit.o stm32scheduler.o params.o terminal.o terminal_prj.o \
-           my_string.o digio.o sine_core.o my_fp.o fu.o inc_encoder.o printf.o anain.o \
-           temp_meas.o param_save.o throttle.o errormessage.o stm32_can.o pwmgeneration.o \
-           picontroller.o terminalcommands.o vehiclecontrol.o
-
-ifeq ($(CONTROL), SINE)
-	OBJSL += pwmgeneration-sine.o
-endif
-ifeq ($(CONTROL), FOC)
-	OBJSL += pwmgeneration-foc.o foc.o
+# Compiler options here.
+ifeq ($(USE_OPT),)
+  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16
 endif
 
-OBJS     = $(patsubst %.o,obj/%.o, $(OBJSL))
-vpath %.c src/ libopeninv/src
-vpath %.cpp src/ libopeninv/src
-
-OPENOCD_BASE	= /usr
-OPENOCD		= $(OPENOCD_BASE)/bin/openocd
-OPENOCD_SCRIPTS	= $(OPENOCD_BASE)/share/openocd/scripts
-OPENOCD_FLASHER	= $(OPENOCD_SCRIPTS)/interface/parport.cfg
-OPENOCD_BOARD	= $(OPENOCD_SCRIPTS)/board/olimex_stm32_h103.cfg
-
-# Be silent per default, but 'make V=1' will show all compiler calls.
-ifneq ($(V),1)
-Q := @
-NULL := 2>/dev/null
+# C specific options here (added to USE_OPT).
+ifeq ($(USE_COPT),)
+  USE_COPT = 
 endif
 
-all: directories images
-Debug:images
-Release: images
-cleanDebug:clean
-images: $(BINARY)
-	@printf "  OBJCOPY $(BINARY).bin\n"
-	$(Q)$(OBJCOPY) -Obinary $(BINARY) $(BINARY).bin
-	@printf "  OBJCOPY $(BINARY).hex\n"
-	$(Q)$(OBJCOPY) -Oihex $(BINARY) $(BINARY).hex
-	$(Q)$(SIZE) $(BINARY)
+# C++ specific options here (added to USE_OPT).
+ifeq ($(USE_CPPOPT),)
+  USE_CPPOPT = -std=gnu++11 -fno-exceptions -fno-rtti
+endif
 
-directories: ${OUT_DIR}
+# Enable this if you want the linker to remove unused code and data.
+ifeq ($(USE_LINK_GC),)
+  USE_LINK_GC = yes
+endif
 
-${OUT_DIR}:
-	$(Q)${MKDIR_P} ${OUT_DIR}
+# Linker extra options here.
+ifeq ($(USE_LDOPT),)
+  USE_LDOPT = 
+endif
 
-$(BINARY): $(OBJS) $(LDSCRIPT)
-	@printf "  LD      $(subst $(shell pwd)/,,$(@))\n"
-	$(Q)$(LD) $(LDFLAGS) -o $(BINARY) $(OBJS) -lopencm3_stm32f1
+# Enable this if you want link time optimizations (LTO).
+ifeq ($(USE_LTO),)
+  USE_LTO = yes
+endif
 
-$(OUT_DIR)/%.o: %.c Makefile
-	@printf "  CC      $(subst $(shell pwd)/,,$(@))\n"
-	$(Q)$(CC) $(CFLAGS) -o $@ -c $<
+# Enable this if you want to see the full log while compiling.
+ifeq ($(USE_VERBOSE_COMPILE),)
+  USE_VERBOSE_COMPILE = no
+endif
 
-$(OUT_DIR)/%.o: %.cpp Makefile
-	@printf "  CPP     $(subst $(shell pwd)/,,$(@))\n"
-	$(Q)$(CPP) $(CPPFLAGS) -o $@ -c $<
+# If enabled, this option makes the build process faster by not compiling
+# modules not used in the current configuration.
+ifeq ($(USE_SMART_BUILD),)
+  USE_SMART_BUILD = yes
+endif
 
-clean:
-	@printf "  CLEAN   ${OUT_DIR}\n"
-	$(Q)rm -rf ${OUT_DIR}
-	@printf "  CLEAN   $(BINARY)\n"
-	$(Q)rm -f $(BINARY)
-	@printf "  CLEAN   $(BINARY).bin\n"
-	$(Q)rm -f $(BINARY).bin
-	@printf "  CLEAN   $(BINARY).hex\n"
-	$(Q)rm -f $(BINARY).hex
-	@printf "  CLEAN   $(BINARY).srec\n"
-	$(Q)rm -f $(BINARY).srec
-	@printf "  CLEAN   $(BINARY).list\n"
-	$(Q)rm -f $(BINARY).list
+#
+# Build global options
+##############################################################################
 
-flash: images
-	@printf "  FLASH   $(BINARY).bin\n"
-	@# IMPORTANT: Don't use "resume", only "reset" will work correctly!
-	$(Q)$(OPENOCD) -s $(OPENOCD_SCRIPTS) \
-		       -f $(OPENOCD_FLASHER) \
-		       -f $(OPENOCD_BOARD) \
-		       -c "init" -c "reset halt" \
-		       -c "flash write_image erase $(BINARY).hex" \
-		       -c "reset" \
-		       -c "shutdown" $(NULL)
+##############################################################################
+# Architecture or project specific options
+#
 
-.PHONY: directories images clean
+# Stack size to be allocated to the Cortex-M process stack. This stack is
+# the stack used by the main() thread.
+ifeq ($(USE_PROCESS_STACKSIZE),)
+  USE_PROCESS_STACKSIZE = 0x400
+endif
 
-get-deps:
-	@printf "  GIT SUBMODULE\n"
-	$(Q)git submodule update --init
-	@printf "  MAKE libopencm3\n"
-	$(Q)${MAKE} -C libopencm3
+# Stack size to the allocated to the Cortex-M main/exceptions stack. This
+# stack is used for processing interrupts and exceptions.
+ifeq ($(USE_EXCEPTIONS_STACKSIZE),)
+  USE_EXCEPTIONS_STACKSIZE = 0x400
+endif
 
-Test:
-	cd test && $(MAKE)
-cleanTest:
-	cd test && $(MAKE) clean
+# Enables the use of FPU (no, softfp, hard).
+ifeq ($(USE_FPU),)
+  USE_FPU = no
+endif
+
+# FPU-related options.
+ifeq ($(USE_FPU_OPT),)
+  USE_FPU_OPT = -mfloat-abi=$(USE_FPU) -mfpu=fpv4-sp-d16
+endif
+
+#
+# Architecture or project specific options
+##############################################################################
+
+##############################################################################
+# Project, target, sources and paths
+#
+
+# Define project name here
+PROJECT = stm32-sine
+
+# Target settings.
+MCU  = cortex-m4
+
+# Imported source files and paths.
+CHIBIOS  := ChibiOS
+CONFDIR  := ./cfg
+BUILDDIR := ./build
+DEPDIR   := ./.dep
+
+# # libopencm3 sources
+# LIBOPENINVCPP := ./src
+
+# Licensing files.
+include $(CHIBIOS)/os/license/license.mk
+# Startup files.
+include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32f4xx.mk
+# HAL-OSAL files (optional).
+include $(CHIBIOS)/os/hal/hal.mk
+include $(CHIBIOS)/os/hal/ports/STM32/STM32F4xx/platform.mk
+include $(CHIBIOS)/os/hal/boards/ST_STM32F4_DISCOVERY/board.mk
+include $(CHIBIOS)/os/hal/osal/rt-nil/osal.mk
+# RTOS files (optional).
+include $(CHIBIOS)/os/rt/rt.mk
+include $(CHIBIOS)/os/common/ports/ARMv7-M/compilers/GCC/mk/port.mk
+# Auto-build files in ./source recursively.
+include $(CHIBIOS)/tools/mk/autobuild.mk
+# Other files (optional).
+include $(CHIBIOS)/test/lib/test.mk
+include $(CHIBIOS)/test/rt/rt_test.mk
+include $(CHIBIOS)/test/oslib/oslib_test.mk
+include $(CHIBIOS)/os/various/cpp_wrappers/chcpp.mk
+
+include stm32-sine.mk
+
+# Define linker script file here
+LDSCRIPT= $(STARTUPLD)/STM32F407xG.ld
+
+# C sources that can be compiled in ARM or THUMB mode depending on the global
+# setting.
+CSRC = $(ALLCSRC) \
+       $(TESTSRC) 
+
+# C++ sources that can be compiled in ARM or THUMB mode depending on the global
+# setting.
+CPPSRC = $(ALLCPPSRC) \
+         stm32-sine.cpp \
+         main.cpp
+
+# List ASM source files here.
+ASMSRC = $(ALLASMSRC)
+
+# List ASM with preprocessor source files here.
+ASMXSRC = $(ALLXASMSRC)
+
+# Inclusion directories.
+INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC) \
+          include \
+          libopeninv/include \
+          libopencm3/include/libopencm3/stm32
+
+# Define C warning options here.
+CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes
+
+# Define C++ warning options here.
+CPPWARN = -Wall -Wextra -Wundef
+
+#
+# Project, target, sources and paths
+##############################################################################
+
+##############################################################################
+# Start of user section
+#
+
+# List all user C define here, like -D_DEBUG=1
+UDEFS =
+
+# Define ASM defines here
+UADEFS =
+
+# List all user directories here
+UINCDIR =
+
+# List the user directory to look for the libraries here
+ULIBDIR =
+
+# List all user libraries here
+ULIBS =
+
+#
+# End of user section
+##############################################################################
+
+##############################################################################
+# Common rules
+#
+
+RULESPATH = $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk
+include $(RULESPATH)/arm-none-eabi.mk
+include $(RULESPATH)/rules.mk
+
+#
+# Common rules
+##############################################################################
+
+##############################################################################
+# Custom rules
+#
+
+#
+# Custom rules
+##############################################################################
