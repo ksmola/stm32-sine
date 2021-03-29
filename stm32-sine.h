@@ -1,4 +1,4 @@
 #pragma once
 
-//void runSine(void);
+void runSine(void);
 //void rebootNow(void);

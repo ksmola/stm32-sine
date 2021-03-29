@@ -31,6 +31,8 @@ int main(void)
    halInit();
    chSysInit();
 
+   runSine();
+
    // extern const TERM_CMD TermCmds[];
    // initRtc();
    // clock_setup();

@@ -28,10 +28,10 @@
 // #include "sine_core.h"
 // #include "fu.h"
 // #include "hwdefs.h"
-// #include "hwinit.h"
-// #include "params.h"
+#include "hwinit.h"
+#include "params.h"
 // #include "param_save.h"
-// #include "digio.h"
+#include "digio.h"
 // #include "anain.h"
 // #include "inc_encoder.h"
 // #include "throttle.h"
@@ -40,6 +40,7 @@
 // #include "pwmgeneration.h"
 // #include "vehiclecontrol.h"
 #include "hal.h"
+#include "ch.h"
 #include "stm32-sine.h"
 // #include "mpu_util.h"
 
@@ -50,8 +51,16 @@
 // static Can* can;
 // static Terminal* terminal;
 
-static void Ms100Task(void)
-{
+
+/*
+ * ms100 thread
+ */
+static THD_WORKING_AREA(waThread3, 128);
+static THD_FUNCTION(Ms100Thread, arg) {
+  (void)arg;
+  chRegSetThreadName("MS100 Thread");
+  while (true) {
+       
    // DigIo::led_out.Toggle();
    // iwdg_reset();
    // s32fp cpuLoad = FP_FROMINT(PwmGeneration::GetCpuLoad() + scheduler->GetCpuLoad());
@@ -77,7 +86,7 @@ static void Ms100Task(void)
    // VehicleControl::CruiseControl();
 
    // #if CONTROL == CTRL_SINE
-   // //uac = udc * amp/maxamp / sqrt(2)
+   // uac = udc * amp/maxamp / sqrt(2)
    // s32fp uac = Param::Get(Param::udc) * SineCore::GetAmp();
    // uac /= SineCore::MAXAMP;
    // uac = FP_DIV(uac, FP_FROMFLT(1.4142));
@@ -85,34 +94,24 @@ static void Ms100Task(void)
    // Param::SetFlt(Param::uac, uac);
    // #endif // CONTROL
 
-   // if (Param::GetInt(Param::canperiod) == CAN_PERIOD_100MS)
-   //    can->SendAll();
+   if (Param::GetInt(Param::canperiod) == CAN_PERIOD_100MS)
+      // can->SendAll();
+   chThdSleepMilliseconds(100);
+  }
 }
 
-// static void RunCharger(s32fp udc)
-// {
-   // static s32fp chargeCurRamped = 0;
 
-   // s32fp chargeCur = Param::Get(Param::chargecur);
-   // s32fp tempDerate = FP_FROMINT(100);
-   // s32fp udcDerate = -FP_FROMINT(100); //we use the regen udc limiter, therefor negative starting value
+/*
+ * ms10 thread
+ * Normal run takes 70µs -> 0.7% cpu load (last measured version 3.5) (pre Chibi)
+ */
+static THD_WORKING_AREA(waThread2, 128);
+static THD_FUNCTION(Ms10Thread, arg) {
+  (void)arg;
+  chRegSetThreadName("MS10 Thread");
+  static int initWait = 0;
 
-   // Throttle::TemperatureDerate(Param::Get(Param::tmphs), Param::Get(Param::tmphsmax), tempDerate);
-   // Throttle::UdcLimitCommand(udcDerate, udc);
-   // udcDerate = MIN(-udcDerate, tempDerate); //and back to positive
-   // chargeCur = FP_MUL(udcDerate, chargeCur) / 100;
-
-   // if (chargeCur < chargeCurRamped)
-   //    chargeCurRamped = chargeCur;
-   // else
-   //    chargeCurRamped = RAMPUP(chargeCurRamped, chargeCur, 1);
-   // PwmGeneration::SetChargeCurrent(chargeCurRamped);
-// }
-
-//Normal run takes 70µs -> 0.7% cpu load (last measured version 3.5)
-static void Ms10Task(void)
-{
-   // static int initWait = 0;
+  while (true) {     
    // int opmode = Param::GetInt(Param::opmode);
    // int chargemode = Param::GetInt(Param::chargemode);
    // int newMode = MOD_OFF;
@@ -231,26 +230,56 @@ static void Ms10Task(void)
 
    // if (Param::GetInt(Param::canperiod) == CAN_PERIOD_10MS)
    //    can->SendAll();
+   chThdSleepMilliseconds(10);
+  }
 }
 
-static void Ms1Task(void)
-{
-   // static int speedCnt = 0;
 
-   // if (Param::GetInt(Param::pwmfunc) == PWM_FUNC_SPEEDFRQ)
-   // {
-   //    int speed = Param::GetInt(Param::speed);
-   //    if (speedCnt == 0 && speed != 0)
-   //    {
-   //       DigIo::speed_out.Toggle();
-   //       speedCnt = Param::GetInt(Param::pwmgain) / (2 * speed);
-   //    }
-   //    else if (speedCnt > 0)
-   //    {
-   //       speedCnt--;
-   //    }
-   // }
+/*
+ * ms1 thread
+ */
+static THD_WORKING_AREA(waThread1, 128);
+static THD_FUNCTION(Ms1Thread, arg) {
+  (void)arg;
+  chRegSetThreadName("MS1 Thread");
+  static int speedCnt = 0;
+  while (true) {
+   if (Param::GetInt(Param::pwmfunc) == PWM_FUNC_SPEEDFRQ)
+   {
+      int speed = Param::GetInt(Param::speed);
+      if (speedCnt == 0 && speed != 0)
+      {
+         DigIo::speed_out.Toggle();
+         speedCnt = Param::GetInt(Param::pwmgain) / (2 * speed);
+      }
+      else if (speedCnt > 0)
+      {
+         speedCnt--;
+      }
+   }
+   chThdSleepMilliseconds(1);
+  }
 }
+
+// static void RunCharger(s32fp udc)
+// {
+   // static s32fp chargeCurRamped = 0;
+
+   // s32fp chargeCur = Param::Get(Param::chargecur);
+   // s32fp tempDerate = FP_FROMINT(100);
+   // s32fp udcDerate = -FP_FROMINT(100); //we use the regen udc limiter, therefor negative starting value
+
+   // Throttle::TemperatureDerate(Param::Get(Param::tmphs), Param::Get(Param::tmphsmax), tempDerate);
+   // Throttle::UdcLimitCommand(udcDerate, udc);
+   // udcDerate = MIN(-udcDerate, tempDerate); //and back to positive
+   // chargeCur = FP_MUL(udcDerate, chargeCur) / 100;
+
+   // if (chargeCur < chargeCurRamped)
+   //    chargeCurRamped = chargeCur;
+   // else
+   //    chargeCurRamped = RAMPUP(chargeCurRamped, chargeCur, 1);
+   // PwmGeneration::SetChargeCurrent(chargeCurRamped);
+// }
 
 /** This function is called when the user changes a parameter */
 // extern void parm_Change(Param::PARAM_NUM paramNum)
@@ -349,6 +378,17 @@ extern "C" void tim2_isr(void)
 extern "C" void tim4_isr(void)
 {
    // scheduler->Run();
+}
+
+void runSine(void) {
+
+   // initialize hardware
+   hwinit();
+
+   // creates threads
+   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 2, Ms1Thread, NULL);
+   chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO + 1, Ms10Thread, NULL);
+   chThdCreateStatic(waThread3, sizeof(waThread3), NORMALPRIO, Ms100Thread, NULL);
 }
 
 // extern "C" int main(void)

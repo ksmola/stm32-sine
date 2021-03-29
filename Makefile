@@ -81,6 +81,9 @@ endif
 ##############################################################################
 # Project, target, sources and paths
 #
+PROJECT_DIR = .
+BOARDS_DIR = $(PROJECT_DIR)/config/boards
+# include $(PROJECT_DIR)/config/boards/$(PROJECT_BOARD)/board.mk
 
 # Define project name here
 PROJECT = stm32-sine
@@ -90,21 +93,21 @@ MCU  = cortex-m4
 
 # Imported source files and paths.
 CHIBIOS  := ChibiOS
-CONFDIR  := ./cfg
+CONFDIR = $(PROJECT_DIR)/hw_layer/$(CPU_HWLAYER)/cfg
 BUILDDIR := ./build
 DEPDIR   := ./.dep
 
 # # libopencm3 sources
-# LIBOPENINVCPP := ./src
+LIBOPENINVCPP := ./libopeninv/src
 
 # Licensing files.
 include $(CHIBIOS)/os/license/license.mk
 # Startup files.
-include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32f4xx.mk
+include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32f1xx.mk
 # HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
-include $(CHIBIOS)/os/hal/ports/STM32/STM32F4xx/platform.mk
-include $(CHIBIOS)/os/hal/boards/ST_STM32F4_DISCOVERY/board.mk
+include $(CHIBIOS)/os/hal/ports/STM32/STM32F1xx/platform.mk
+include $(CHIBIOS)/os/hal/boards/STM32F103C8_MINIMAL/board.mk
 include $(CHIBIOS)/os/hal/osal/rt-nil/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
@@ -116,11 +119,20 @@ include $(CHIBIOS)/test/lib/test.mk
 include $(CHIBIOS)/test/rt/rt_test.mk
 include $(CHIBIOS)/test/oslib/oslib_test.mk
 include $(CHIBIOS)/os/various/cpp_wrappers/chcpp.mk
+# include $(PROJECT_DIR)/hw_layer/hw_layer.mk
 
 include stm32-sine.mk
 
+$(info PROJECT_BOARD: $(PROJECT_BOARD))
+$(info PROJECT_CPU:   $(PROJECT_CPU))
+$(info CONFDIR:       $(CONFDIR))
+$(info LDSCRIPT:      $(LDSCRIPT))
+$(info HW_LAYER_INC:      $(HW_LAYER_INC))
+$(info CPU_HWLAYER:      $(CPU_HWLAYER))
+
+
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/STM32F407xG.ld
+LDSCRIPT = $(STARTUPLD)/STM32F103xG.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -130,6 +142,8 @@ CSRC = $(ALLCSRC) \
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CPPSRC = $(ALLCPPSRC) \
+         $(LIBOPENINVCPP)/params.cpp \
+         hw_layer/hwinit.cpp \
          stm32-sine.cpp \
          main.cpp
 
@@ -139,8 +153,11 @@ ASMSRC = $(ALLASMSRC)
 # List ASM with preprocessor source files here.
 ASMXSRC = $(ALLXASMSRC)
 
+HW_LAYER_INC = $(PROJECT_DIR)/hw_layer 
+
 # Inclusion directories.
 INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC) \
+          $(HW_LAYER_INC) \
           include \
           libopeninv/include \
           libopencm3/include/libopencm3/stm32
@@ -160,7 +177,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = -DCONTROL=CTRL_$(CONTROL) -DCTRL_SINE=0 -DCTRL_FOC=1
 
 # Define ASM defines here
 UADEFS =
