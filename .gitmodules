@@ -3,7 +3,7 @@
 	url = https://github.com/jsphuebner/libopencm3
 [submodule "libopeninv"]
 	path = libopeninv
-	url = https://github.com/jsphuebner/libopeninv.git
+	url = https://github.com/ksmola/libopeninv.git
 [submodule "ChibiOS"]
 	path = ChibiOS
 	url = https://github.com/ChibiOS/ChibiOS.git
