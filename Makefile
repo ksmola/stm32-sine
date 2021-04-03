@@ -100,10 +100,11 @@ DEPDIR   := ./.dep
 # # libopencm3 sources
 LIBOPENINVCPP := ./libopeninv/src
 
+include stm32-sine.mk
 # Licensing files.
 include $(CHIBIOS)/os/license/license.mk
 # Startup files.
-include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32f1xx.mk
+include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/$(CPU_STARTUP)
 # HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/hal/ports/STM32/STM32F1xx/platform.mk
@@ -119,16 +120,6 @@ include $(CHIBIOS)/test/lib/test.mk
 include $(CHIBIOS)/test/rt/rt_test.mk
 include $(CHIBIOS)/test/oslib/oslib_test.mk
 include $(CHIBIOS)/os/various/cpp_wrappers/chcpp.mk
-# include $(PROJECT_DIR)/hw_layer/hw_layer.mk
-
-include stm32-sine.mk
-
-$(info PROJECT_BOARD: $(PROJECT_BOARD))
-$(info PROJECT_CPU:   $(PROJECT_CPU))
-$(info CONFDIR:       $(CONFDIR))
-$(info LDSCRIPT:      $(LDSCRIPT))
-$(info HW_LAYER_INC:      $(HW_LAYER_INC))
-$(info CPU_HWLAYER:      $(CPU_HWLAYER))
 
 
 # Define linker script file here
@@ -167,6 +158,13 @@ CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes
 
 # Define C++ warning options here.
 CPPWARN = -Wall -Wextra -Wundef
+
+$(info PROJECT_BOARD: $(PROJECT_BOARD))
+$(info PROJECT_CPU:   $(PROJECT_CPU))
+$(info CONFDIR:       $(CONFDIR))
+$(info LDSCRIPT:      $(LDSCRIPT))
+$(info HW_LAYER_INC:  $(HW_LAYER_INC))
+$(info CPU_HWLAYER:   $(CPU_HWLAYER))
 
 #
 # Project, target, sources and paths

@@ -1,11 +1,8 @@
-
-
-
-# set default mcu
+# set default board
 ifeq ($(PROJECT_BOARD),)
-  PROJECT_BOARD = st_stm32f1
+  PROJECT_BOARD = tesla_SDU
 endif
-
+# set default mcu
 ifeq ($(PROJECT_CPU),)
   PROJECT_CPU = ARCH_STM32F1
 endif
