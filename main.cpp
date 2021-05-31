@@ -20,59 +20,19 @@
  */
 #include <stdint.h>
 #include "hal.h"
+#include "ch.h"
 #include "stm32-sine.h"
 
 int main(void)
 {
-
    /*
 	 * ChibiOS/RT initialization
 	 */
    halInit();
    chSysInit();
 
+   // run openinverter firmware
    runSine();
-
-   // extern const TERM_CMD TermCmds[];
-   // initRtc();
-   // clock_setup();
-   // rtc_setup();
-   // hwRev = io_setup();
-   // write_bootloader_pininit();
-   // tim_setup();
-   // nvic_setup();
-   // //Encoder::Reset();
-   // parm_load();
-   // ErrorMessage::SetTime(1);
-   // Param::SetInt(Param::pwmio, pwmio_setup(Param::GetBool(Param::pwmpol)));
-
-   // MotorVoltage::SetMaxAmp(SineCore::MAXAMP);
-   // PwmGeneration::SetCurrentOffset(2048, 2048);
-
-   // Stm32Scheduler s(hwRev == HW_BLUEPILL ? TIM4 : TIM2); //We never exit main so it's ok to put it on stack
-   // scheduler = &s;
-   // Can c(CAN1, (Can::baudrates)Param::GetInt(Param::canspeed));
-   // can = &c;
-   // VehicleControl::SetCan(can);
-
-   // s.AddTask(Ms1Task, 1);
-   // s.AddTask(Ms10Task, 10);
-   // s.AddTask(Ms100Task, 100);
-
-   // DigIo::prec_out.Set();
-
-   // Terminal t(USART3, TermCmds);
-   // terminal = &t;
-
-   // if (hwRev == HW_REV1)
-   //    t.DisableTxDMA();
-
-   // UpgradeParameters();
-   // parm_Change(Param::PARAM_LAST);
-
-   // while(1)
-   //    t.Run();
 
    return 0;
 }
-

@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <libopencm3/stm32/timer.h>
-#include <libopencm3/stm32/rtc.h>
+// #include <libopencm3/stm32/timer.h>
+// #include <libopencm3/stm32/rtc.h>
 #include "vehiclecontrol.h"
 #include "temp_meas.h"
 #include "fu.h"
@@ -216,7 +216,8 @@ void VehicleControl::GetDigInputs()
 
    canIoActive |= canio != 0;
 
-   if ((rtc_get_counter_val() - can->GetLastRxTimestamp()) >= CAN_TIMEOUT && canIoActive)
+   // if ((rtc_get_counter_val() - can->GetLastRxTimestamp()) >= CAN_TIMEOUT && canIoActive)
+   if ((chSysGetRealtimeCounterX() - can->GetLastRxTimestamp()) >= CAN_TIMEOUT && canIoActive)
    {
       canio = 0;
       Param::SetInt(Param::canio, 0);
@@ -271,7 +272,9 @@ void VehicleControl::CalcAndOutputTemp()
 
    tmpout = MIN(0xFFFF, MAX(0, tmpout));
 
-   timer_set_oc_value(OVER_CUR_TIMER, TIM_OC4, tmpout);
+   // timer_set_oc_value(OVER_CUR_TIMER, TIM_OC4, tmpout);
+   // change duty cycle of PWM output
+   pwmEnableChannel(&PWMD1, 0, PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 4750))
 
    Param::SetFlt(Param::tmphs, tmphs);
    Param::SetFlt(Param::tmpm, tmpm);
@@ -316,7 +319,7 @@ s32fp VehicleControl::ProcessUdc()
       ErrorMessage::Post(ERR_OVERVOLTAGE);
    }
 
-   if (udcfp < (udcsw / 2) && rtc_get_counter_val() > PRECHARGE_TIMEOUT && DigIo::prec_out.Get())
+   if (udcfp < (udcsw / 2) && chSysGetRealtimeCounterX() > PRECHARGE_TIMEOUT && DigIo::prec_out.Get())
    {
       DigIo::err_out.Set();
       DigIo::prec_out.Clear();
@@ -453,7 +456,7 @@ s32fp VehicleControl::GetUserThrottleCommand()
    if ((potmode & POTMODE_CAN) > 0)
    {
       //500ms timeout
-      if ((rtc_get_counter_val() - can->GetLastRxTimestamp()) < CAN_TIMEOUT)
+      if ((chSysGetRealtimeCounterX() - can->GetLastRxTimestamp()) < CAN_TIMEOUT)
       {
          potval = Param::GetInt(Param::pot);
          pot2val = Param::GetInt(Param::pot2);

@@ -19,6 +19,8 @@
 
 #define STM32F103_MCUCONF
 
+#include "mcuconf_community.h"
+
 /*
  * STM32F103 drivers configuration.
  * The following settings override the default settings present in

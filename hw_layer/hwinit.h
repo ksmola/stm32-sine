@@ -22,6 +22,7 @@
 #ifndef HWINIT_H_INCLUDED
 #define HWINIT_H_INCLUDED
 
+#include "hal.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -34,10 +35,10 @@ extern "C"
 // void rtc_setup(void);
 // void tim_setup(void);
 void hwinit();
+uint16_t pwmio_setup(bool activeLow);
 // HWREV detect_hw(void);
 // void write_bootloader_pininit();
 // HWREV io_setup();
-// uint16_t pwmio_setup(bool activeLow);
 
 #ifdef __cplusplus
 }

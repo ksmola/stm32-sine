@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16
+  USE_OPT = -O0 -ggdb -fomit-frame-pointer -falign-functions=16
 endif
 
 # C specific options here (added to USE_OPT).
@@ -98,7 +98,7 @@ BUILDDIR := ./build
 DEPDIR   := ./.dep
 
 # # libopencm3 sources
-LIBOPENINVCPP := ./libopeninv/src
+LIBOPENINVCPPDIR := ./libopeninv/src
 
 include stm32-sine.mk
 # Licensing files.
@@ -130,11 +130,37 @@ LDSCRIPT = $(STARTUPLD)/STM32F103xG.ld
 CSRC = $(ALLCSRC) \
        $(TESTSRC) 
 
+LIBOPENINVCPP = $(LIBOPENINVCPPDIR)/params.cpp \
+                $(LIBOPENINVCPPDIR)/param_save.cpp \
+                $(LIBOPENINVCPPDIR)/crc8.cpp \
+                $(LIBOPENINVCPPDIR)/errormessage.cpp \
+                $(LIBOPENINVCPPDIR)/fu.cpp
+
+HALCONF := $(strip $(shell cat $(CONFDIR)/halconf.h $(CONFDIR)/halconf_community.h | egrep -e "\#define"))
+
+# Add sources from ChibiOS-Contrib submodule
+CHIBIOS_CONTRIB = ./ChibiOS-Contrib
+
+ifneq ($(findstring HAL_USE_CRC TRUE,$(HALCONF)),)
+HALSRC_CONTRIB += ${CHIBIOS_CONTRIB}/os/hal/src/hal_crc.c \
+                  ${CHIBIOS_CONTRIB}/os/hal/src/hal_community.c \
+                  ${CHIBIOS_CONTRIB}/os/hal/ports/STM32/LLD/CRCv1/hal_crc_lld.c
+
+endif
+
+PLATFORMINC_CONTRIB += ${CHIBIOS_CONTRIB}/os/hal/ports/STM32/LLD/CRCv1 \
+                       ${CHIBIOS_CONTRIB}/os/various \
+
+ALLINC  += ${PLATFORMINC_CONTRIB}
+
+ALLCSRC += $(HALSRC_CONTRIB)
+ALLINC  += ${CHIBIOS_CONTRIB}/os/hal/include
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CPPSRC = $(ALLCPPSRC) \
-         $(LIBOPENINVCPP)/params.cpp \
+         $(LIBOPENINVCPP) \
          hw_layer/hwinit.cpp \
+         sine_core.cpp \
          stm32-sine.cpp \
          main.cpp
 
@@ -159,12 +185,13 @@ CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes
 # Define C++ warning options here.
 CPPWARN = -Wall -Wextra -Wundef
 
-$(info PROJECT_BOARD: $(PROJECT_BOARD))
-$(info PROJECT_CPU:   $(PROJECT_CPU))
-$(info CONFDIR:       $(CONFDIR))
-$(info LDSCRIPT:      $(LDSCRIPT))
-$(info HW_LAYER_INC:  $(HW_LAYER_INC))
-$(info CPU_HWLAYER:   $(CPU_HWLAYER))
+$(info PROJECT_BOARD:  $(PROJECT_BOARD))
+$(info PROJECT_CPU:    $(PROJECT_CPU))
+$(info CONFDIR:        $(CONFDIR))
+$(info LDSCRIPT:       $(LDSCRIPT))
+$(info HW_LAYER_INC:   $(HW_LAYER_INC))
+$(info CPU_HWLAYER:    $(CPU_HWLAYER))
+$(info HALSRC_CONTRIB: $(HALSRC_CONTRIB))
 
 #
 # Project, target, sources and paths

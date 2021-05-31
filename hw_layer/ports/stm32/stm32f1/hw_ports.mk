@@ -12,5 +12,18 @@ MCU = cortex-m4
 ALLCSRC += $(CHIBIOS)/os/hal/boards/STM32F103C8_MINIMAL/board.c
 CONFDIR = $(PROJECT_DIR)/hw_layer/ports/stm32/stm32f1/cfg
 
-# TODO: remove, for efifeatures.h
 ALLINC += $(PROJECT_DIR)/config/stm32f1ems
+
+include ${CHIBIOS_CONTRIB}/os/hal/ports/STM32/LLD/CRCv1/driver.mk
+include ${CHIBIOS_CONTRIB}/os/hal/ports/STM32/LLD/TIMv1/driver.mk
+include ${CHIBIOS_CONTRIB}/os/hal/ports/STM32/LLD/COMPv1/driver.mk
+
+ifeq ($(USE_SMART_BUILD),yes)
+ifneq ($(findstring HAL_USE_CRC TRUE,$(HALCONF)),)
+PLATFORMSRC_CONTRIB += ${CHIBIOS_CONTRIB}/os/hal/ports/STM32/LLD/CRCv1/hal_crc_lld.c
+endif
+else
+PLATFORMSRC_CONTRIB += ${CHIBIOS_CONTRIB}/os/hal/ports/STM32/LLD/CRCv1/hal_crc_lld.c
+endif
+
+PLATFORMINC_CONTRIB += ${CHIBIOS_CONTRIB}/os/hal/ports/STM32/LLD/CRCv1
