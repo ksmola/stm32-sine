@@ -24,10 +24,10 @@
 #define OVER_CUR_POS       hwRev == HW_BLUEPILL ? TIM_OC2 : TIM_OC3
 
 //Address of parameter block in flash
-#define FLASH_PAGE_SIZE 1024
-#define PARAM_ADDRESS 0x0801FC00
-#define PARAM_BLKSIZE FLASH_PAGE_SIZE
-#define CANMAP_ADDRESS 0x0801F800
+#define PARAM_BLKSIZE 1024
+#define PARAM_BLKNUM  1   //last block of 1k
+#define CAN_BLKSIZE   1024
+#define CAN_BLKNUM    2   //second to last block of 1k
 
 #define REV_CNT_IC         hwRev == HW_REV1 ? TIM_IC3 : TIM_IC1
 #define REV_CNT_OC         hwRev == HW_REV1 ? TIM_OC3 : TIM_OC1
@@ -43,7 +43,7 @@
 
 typedef enum
 {
-   HW_REV1, HW_REV2, HW_REV3, HW_TESLA, HW_TESLAM3, HW_BLUEPILL, HW_PRIUS, HW_PRIUSMG1
+   HW_REV1, HW_REV2, HW_REV3, HW_TESLA, HW_BLUEPILL, HW_PRIUS
 } HWREV;
 
 extern HWREV hwRev;

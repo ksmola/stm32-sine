@@ -32,7 +32,7 @@ class PwmGeneration
       static void SetOpmode(int opmode);
       static void SetAmpnom(s32fp amp);
       static void SetFslip(s32fp fslip);
-      static void SetTorquePercent(s32fp torque);
+      static void SetTorquePercent(float torque);
       static void SetCurrentOffset(int offset1, int offset2);
       static void SetCurrentLimitThreshold(s32fp ocurlim);
       static void SetControllerGains(int kp, int ki, int fwkp);
@@ -68,6 +68,7 @@ class PwmGeneration
       static uint16_t slipIncr;
       static s32fp fslip;
       static s32fp frq;
+      static s32fp frqFiltered;
       static uint8_t shiftForTimer;
       static int opmode;
       static s32fp ilofs[2];

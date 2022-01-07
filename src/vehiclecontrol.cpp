@@ -18,6 +18,7 @@
  */
 // #include <libopencm3/stm32/timer.h>
 // #include <libopencm3/stm32/rtc.h>
+#include <libopencm3/stm32/spi.h>
 #include "vehiclecontrol.h"
 #include "temp_meas.h"
 #include "fu.h"
@@ -29,16 +30,23 @@
 #include "throttle.h"
 #include "my_math.h"
 #include "pwmgeneration.h"
+#include "hwinit.h"
 
 #define PRECHARGE_TIMEOUT 500 //5s
 #define CAN_TIMEOUT       50  //500ms
+#define ADC_CHAN_UDC      3
+#define MAP(x, in_min, in_max, out_min,out_max) ((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
+
 
 Can* VehicleControl::can;
 bool VehicleControl::lastCruiseSwitchState = false;
 bool VehicleControl::canIoActive = false;
+bool VehicleControl::spiEnabled = false;
 int VehicleControl::temphsFiltered = 0;
 int VehicleControl::tempmFiltered = 0;
 int VehicleControl::udcFiltered = 0;
+uint16_t VehicleControl::bmwAdcNextChan = 0;
+uint16_t VehicleControl::bmwAdcValues[4];
 
 void VehicleControl::PostErrorIfRunning(ERROR_MESSAGE_NUM err)
 {
@@ -142,14 +150,14 @@ void VehicleControl::SelectDirection()
    Param::SetInt(Param::dir, selectedDir);
 }
 
-s32fp VehicleControl::ProcessThrottle()
+float VehicleControl::ProcessThrottle()
 {
-   s32fp throtSpnt, finalSpnt;
+   float throtSpnt, finalSpnt;
 
    if ((int)Encoder::GetSpeed() < Param::GetInt(Param::throtramprpm))
-      Throttle::throttleRamp = Param::Get(Param::throtramp);
+      Throttle::throttleRamp = Param::GetFloat(Param::throtramp);
    else
-      Throttle::throttleRamp = Param::GetAttrib(Param::throtramp)->max;
+      Throttle::throttleRamp = FP_TOFLOAT(Param::GetAttrib(Param::throtramp)->max);
 
    throtSpnt = GetUserThrottleCommand();
    GetCruiseCreepCommand(finalSpnt, throtSpnt);
@@ -158,25 +166,25 @@ s32fp VehicleControl::ProcessThrottle()
    if (hwRev != HW_TESLA)
       Throttle::BmsLimitCommand(finalSpnt, Param::GetBool(Param::din_bms));
 
-   Throttle::UdcLimitCommand(finalSpnt, Param::Get(Param::udc));
-   Throttle::IdcLimitCommand(finalSpnt, Param::Get(Param::idc));
-   Throttle::FrequencyLimitCommand(finalSpnt, Param::Get(Param::fstat));
+   Throttle::UdcLimitCommand(finalSpnt, Param::GetFloat(Param::udc));
+   Throttle::IdcLimitCommand(finalSpnt, Param::GetFloat(Param::idc));
+   Throttle::FrequencyLimitCommand(finalSpnt, Param::GetFloat(Param::fstat));
 
-   if (Throttle::TemperatureDerate(Param::Get(Param::tmphs), Param::Get(Param::tmphsmax), finalSpnt))
+   if (Throttle::TemperatureDerate(Param::GetFloat(Param::tmphs), Param::GetFloat(Param::tmphsmax), finalSpnt))
    {
       DigIo::err_out.Set();
       ErrorMessage::Post(ERR_TMPHSMAX);
    }
 
-   if (Throttle::TemperatureDerate(Param::Get(Param::tmpm), Param::Get(Param::tmpmmax), finalSpnt))
+   if (Throttle::TemperatureDerate(Param::GetFloat(Param::tmpm), Param::GetFloat(Param::tmpmmax), finalSpnt))
    {
       DigIo::err_out.Set();
       ErrorMessage::Post(ERR_TMPMMAX);
    }
 
-   Param::SetFlt(Param::potnom, finalSpnt);
+   Param::SetFloat(Param::potnom, finalSpnt);
 
-   if (finalSpnt < Param::Get(Param::brkout))
+   if (finalSpnt < Param::GetFloat(Param::brkout))
       DigIo::brk_out.Set();
    else
       DigIo::brk_out.Clear();
@@ -242,28 +250,28 @@ void VehicleControl::GetDigInputs()
 
 void VehicleControl::CalcAndOutputTemp()
 {
-   s32fp pwmgain = Param::Get(Param::pwmgain);
+   float pwmgain = Param::GetFloat(Param::pwmgain);
    int pwmofs = Param::GetInt(Param::pwmofs);
    int pwmfunc = Param::GetInt(Param::pwmfunc);
    int tmpout = 0;
-   s32fp tmphs = 0, tmpm = 0;
+   float tmphs = 0, tmpm = 0;
 
    GetTemps(tmphs, tmpm);
 
-   temphsFiltered = IIRFILTER(tmphs, temphsFiltered, 15);
-   tempmFiltered = IIRFILTER(tmpm, tempmFiltered, 18);
+   temphsFiltered = IIRFILTERF(tmphs, temphsFiltered, 15);
+   tempmFiltered = IIRFILTERF(tmpm, tempmFiltered, 18);
 
    switch (pwmfunc)
    {
       default:
       case PWM_FUNC_TMPM:
-         tmpout = FP_TOINT(FP_MUL(tmpm, pwmgain)) + pwmofs;
+         tmpout = tmpm * pwmgain + pwmofs;
          break;
       case PWM_FUNC_TMPHS:
-         tmpout = FP_TOINT(FP_MUL(tmphs, pwmgain)) + pwmofs;
+         tmpout = tmphs * pwmgain + pwmofs;
          break;
       case PWM_FUNC_SPEED:
-         tmpout = FP_TOINT(FP_MUL(Param::Get(Param::speed), pwmgain)) + pwmofs;
+         tmpout = Param::GetInt(Param::speed) * pwmgain + pwmofs;
          break;
       case PWM_FUNC_SPEEDFRQ:
          //Handled in 1ms task
@@ -276,29 +284,44 @@ void VehicleControl::CalcAndOutputTemp()
    // change duty cycle of PWM output
    pwmEnableChannel(&PWMD1, 0, PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 4750))
 
-   Param::SetFlt(Param::tmphs, tmphs);
-   Param::SetFlt(Param::tmpm, tmpm);
+   Param::SetFloat(Param::tmphs, tmphs);
+   Param::SetFloat(Param::tmpm, tmpm);
 }
 
-s32fp VehicleControl::ProcessUdc()
+float VehicleControl::ProcessUdc()
 {
-   s32fp udcfp;
-   s32fp udcmin = Param::Get(Param::udcmin);
-   s32fp udcmax = Param::Get(Param::udcmax);
-   s32fp udclim = Param::Get(Param::udclim);
-   s32fp udcgain = Param::Get(Param::udcgain);
-   s32fp udcsw = Param::Get(Param::udcsw);
+   float udcfp;
+   float udcmin = Param::GetFloat(Param::udcmin);
+   float udcmax = Param::GetFloat(Param::udcmax);
+   float udclim = Param::GetFloat(Param::udclim);
+   float udcgain = Param::GetFloat(Param::udcgain);
+   float udcsw = Param::GetFloat(Param::udcsw);
+   int snshs = Param::GetInt(Param::snshs);
    int udcofs = Param::GetInt(Param::udcofs);
+   int udcRaw;
 
    //Calculate "12V" supply voltage from voltage divider on mprot pin
    //1.2/(4.7+1.2)/3.33*4095 = 250 -> make it a bit less for pin losses etc
    //HW_REV1 had 3.9k resistors
    int uauxGain = hwRev == HW_REV1 ? 289 : 249;
-   Param::SetFlt(Param::uaux, FP_DIV(AnaIn::uaux.Get(), uauxGain));
-   udcFiltered = IIRFILTER(udcFiltered, AnaIn::udc.Get(), 2);
-   udcfp = FP_DIV(FP_FROMINT(udcFiltered - udcofs), udcgain);
+   Param::SetFloat(Param::uaux, (float)AnaIn::uaux.Get() / uauxGain);
 
-   if (hwRev != HW_TESLAM3)
+   //Yes heatsink temperature also selects external ADC as udc source
+   if (snshs == TempMeas::TEMP_BMWI3HS)
+   {
+      BmwAdcAcquire();
+      udcRaw = bmwAdcValues[ADC_CHAN_UDC];
+   }
+   else
+   {
+      udcRaw = AnaIn::udc.Get();
+   }
+
+   udcFiltered = IIRFILTER(udcFiltered, udcRaw, 2);
+   udcfp = (udcFiltered - udcofs) / udcgain;
+
+   //On i3 pin is used as SPI_MOSI
+   if (snshs != TempMeas::TEMP_BMWI3HS)
    {
       if (udcfp < udcmin || udcfp > udcmax)
          DigIo::vtg_out.Set();
@@ -328,46 +351,55 @@ s32fp VehicleControl::ProcessUdc()
 
    #if CONTROL == CTRL_SINE
    {
-      s32fp udcnom = Param::Get(Param::udcnom);
-      s32fp fweak = Param::Get(Param::fweak);
-      s32fp boost = Param::Get(Param::boost);
+      float udcnom = Param::GetFloat(Param::udcnom);
+      float boost = Param::GetFloat(Param::boost);
+      float fweak;
+
+      if (Param::GetInt(Param::potnom) > 35)
+      {
+         fweak = MAP(Param::GetFloat(Param::potnom), 36, 100, (Param::GetFloat(Param::fweakstrt)), (Param::GetFloat(Param::fweak)));
+      }
+      else
+      {
+         fweak = Param::GetFloat(Param::fweakstrt);
+      }
 
       if (udcnom > 0)
       {
-         s32fp udcdiff = udcfp - udcnom;
-         s32fp factor = FP_FROMINT(1) + FP_DIV(udcdiff, udcnom);
+         float udcdiff = udcfp - udcnom;
+         float factor = 1.0 + udcdiff / udcnom;
          //increase fweak on voltage above nominal
-         fweak = FP_MUL(fweak, factor);
+         fweak = fweak * factor;
          //decrease boost on voltage below nominal
-         boost = FP_DIV(boost, factor);
+         boost = boost / factor;
       }
 
-      Param::SetFlt(Param::fweakcalc, fweak);
-      Param::SetFlt(Param::boostcalc, boost);
+      Param::SetFloat(Param::fweakcalc, fweak);
+      Param::SetFloat(Param::boostcalc, boost);
       MotorVoltage::SetWeakeningFrq(fweak);
-      MotorVoltage::SetBoost(FP_TOINT(boost));
+      MotorVoltage::SetBoost(boost);
    }
    #endif // CONTROL
 
-   Param::SetFlt(Param::udc, udcfp);
+   Param::SetFloat(Param::udc, udcfp);
 
    return udcfp;
 }
 
-void VehicleControl::GetTemps(s32fp& tmphs, s32fp &tmpm)
+void VehicleControl::GetTemps(float& tmphs, float &tmpm)
 {
    if (hwRev == HW_TESLA)
    {
-      static s32fp hsTemps[3];
-      static s32fp mTemps[2];
+      static float hsTemps[3];
+      static float mTemps[2];
       static bool isLdu = false;
 
       int input = DigIo::temp0_out.Get() + 2 * DigIo::temp1_out.Get();
       int tmphsi = AnaIn::tmphs.Get();
       int tmpmi = AnaIn::tmpm.Get();
 
-      tmphs = Param::Get(Param::tmphs); //default to last value;
-      tmpm = Param::Get(Param::tmpm);
+      tmphs = Param::GetFloat(Param::tmphs); //default to last value;
+      tmpm = Param::GetFloat(Param::tmpm);
 
       switch (input)
       {
@@ -425,19 +457,26 @@ void VehicleControl::GetTemps(s32fp& tmphs, s32fp &tmpm)
 
       if (hwRev == HW_PRIUS)
       {
-         static s32fp priusTempCoeff = FP_FROMFLT(18.62);
+         static float priusTempCoeff = 18.62;
 
          //We need to install a 10k pull-down resistor to be able
          //to measure temps lower than 56°C. If this resistor
          //is not installed, we will see readings above 2.5V
          //and we double the coefficient to at least get a valid
          //reading.
-         if (priusTempCoeff < FP_FROMFLT(20) && tmphsi > 3200)
+         if (priusTempCoeff < 20 && tmphsi > 3200)
          {
             priusTempCoeff *= 2;
          }
 
-         tmphs = FP_FROMFLT(166.66) - FP_DIV(FP_FROMINT(tmphsi), priusTempCoeff);
+         tmphs = 166.66f - tmphsi / priusTempCoeff;
+      }
+      else if (snshs == TempMeas::TEMP_BMWI3HS)
+      {
+         //For the next line to work, BmwAdcGet() must be called regularly
+         //Which currently happens in ProcessUdc()
+         tmphsi = MIN(bmwAdcValues[0], MIN(bmwAdcValues[1], bmwAdcValues[2]));
+         tmphs = TempMeas::Lookup(tmphsi, snshs);
       }
       else
       {
@@ -446,9 +485,9 @@ void VehicleControl::GetTemps(s32fp& tmphs, s32fp &tmpm)
    }
 }
 
-s32fp VehicleControl::GetUserThrottleCommand()
+float VehicleControl::GetUserThrottleCommand()
 {
-   s32fp potnom1, potnom2;
+   float potnom1, potnom2;
    int potval, pot2val;
    bool brake = Param::GetBool(Param::din_brake);
    int potmode = Param::GetInt(Param::potmode);
@@ -513,7 +552,7 @@ s32fp VehicleControl::GetUserThrottleCommand()
          return 0;
       }
 
-      potnom2 = FP_FROMINT(100); //No regen attenuation
+      potnom2 = 100.0f; //No regen attenuation
    }
    else if (!inRange1)
    {
@@ -527,11 +566,11 @@ s32fp VehicleControl::GetUserThrottleCommand()
    return Throttle::CalcThrottle(potnom1, potnom2, brake);
 }
 
-void VehicleControl::GetCruiseCreepCommand(s32fp& finalSpnt, s32fp throtSpnt)
+void VehicleControl::GetCruiseCreepCommand(float& finalSpnt, float throtSpnt)
 {
    bool brake = Param::GetBool(Param::din_brake);
-   s32fp idleSpnt = Throttle::CalcIdleSpeed(Encoder::GetSpeed());
-   s32fp cruiseSpnt = Throttle::CalcCruiseSpeed(Encoder::GetSpeed());
+   float idleSpnt = Throttle::CalcIdleSpeed(Encoder::GetSpeed());
+   float cruiseSpnt = Throttle::CalcCruiseSpeed(Encoder::GetSpeed());
 
    finalSpnt = throtSpnt; //assume no regulation
 
@@ -549,4 +588,28 @@ void VehicleControl::GetCruiseCreepCommand(s32fp& finalSpnt, s32fp throtSpnt)
       else if (throtSpnt > 0)
          finalSpnt = MAX(cruiseSpnt, throtSpnt);
    }
+}
+
+void VehicleControl::BmwAdcAcquire()
+{
+   const uint16_t adcGetManual = 1 << 12, adcSetDio = 1 << 11, adcVrefDual = 1 << 6;
+   const uint32_t maxChan = sizeof(bmwAdcValues) / sizeof(bmwAdcValues[0]);
+
+   if (!spiEnabled)
+   {
+      spi_setup();
+      //Brake pin is used as SPI_MISO
+      DigIo::brk_out.Configure(GPIOC, GPIO5, PinMode::INPUT_FLT);
+      DigIo::spi_cs_out.Set();
+      spiEnabled = true;
+   }
+
+   DigIo::spi_cs_out.Clear();
+   uint16_t data = spi_xfer(SPI1, adcGetManual | adcSetDio | adcVrefDual | (bmwAdcNextChan << 7));
+   DigIo::spi_cs_out.Set();
+   uint16_t readChan = data >> 12;
+   bmwAdcNextChan = (bmwAdcNextChan == maxChan) ? 0 : bmwAdcNextChan + 1;
+
+   if (readChan < maxChan)
+      bmwAdcValues[readChan] = data & 0xFFF;
 }

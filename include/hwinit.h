@@ -33,8 +33,9 @@ void usart_setup(void);
 void nvic_setup(void);
 void rtc_setup(void);
 void tim_setup(void);
+void spi_setup(void);
 HWREV detect_hw(void);
-void write_bootloader_pininit();
+void write_bootloader_pininit(bool bootprec);
 HWREV io_setup();
 uint16_t pwmio_setup(bool activeLow);
 

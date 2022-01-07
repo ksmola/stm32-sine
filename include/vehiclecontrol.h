@@ -33,23 +33,25 @@ class VehicleControl
       static void SelectDirection();
       static void GetDigInputs();
       static void CalcAndOutputTemp();
-      static s32fp ProcessUdc();
-      static s32fp ProcessThrottle();
+      static float ProcessUdc();
+      static float ProcessThrottle();
       static void SetContactorsOffState();
-
-   protected:
 
    private:
       static Can* can; //!< Member variable "can"
       static bool lastCruiseSwitchState;
       static bool canIoActive;
+      static bool spiEnabled;
       static int temphsFiltered;
       static int tempmFiltered;
       static int udcFiltered;
+      static uint16_t bmwAdcNextChan;
+      static uint16_t bmwAdcValues[4];
 
-      static void GetTemps(s32fp& tmphs, s32fp &tmpm);
-      static s32fp GetUserThrottleCommand();
-      static void GetCruiseCreepCommand(s32fp& finalSpnt, s32fp throtSpnt);
+      static void GetTemps(float& tmphs, float &tmpm);
+      static float GetUserThrottleCommand();
+      static void GetCruiseCreepCommand(float& finalSpnt, float throtSpnt);
+      static void BmwAdcAcquire();
 };
 
 #endif // VCU_H

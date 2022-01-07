@@ -42,6 +42,7 @@ s32fp    PwmGeneration::ampnom;
 uint16_t PwmGeneration::slipIncr;
 s32fp    PwmGeneration::fslip;
 s32fp    PwmGeneration::frq;
+s32fp    PwmGeneration::frqFiltered;
 uint8_t  PwmGeneration::shiftForTimer;
 int      PwmGeneration::opmode;
 s32fp    PwmGeneration::ilofs[2];
@@ -308,13 +309,13 @@ void PwmGeneration::Charge()
    int dc = chargeController.Run(iFlt);
 
    if (opmode == MOD_BOOST)
-      Param::SetFlt(Param::idc, FP_MUL((FP_FROMINT(100) - ampnom), iFlt) / 100);
+      Param::SetFixed(Param::idc, FP_MUL((FP_FROMINT(100) - ampnom), iFlt) / 100);
    else
-      Param::SetFlt(Param::idc, iFlt);
+      Param::SetFixed(Param::idc, iFlt);
 
    Param::SetInt(Param::amp, dc);
-   Param::SetFlt(Param::il1, il1);
-   Param::SetFlt(Param::il2, il2);
+   Param::SetFixed(Param::il1, il1);
+   Param::SetFixed(Param::il2, il2);
 
    timer_set_oc_value(PWM_TIMER, TIM_OC2, dc);
 }
@@ -391,7 +392,7 @@ uint16_t PwmGeneration::TimerSetup(uint16_t deadtime, bool activeLow)
 
    timer_disable_break_automatic_output(PWM_TIMER);
 
-   if (hwRev == HW_BLUEPILL || hwRev == HW_PRIUS || hwRev == HW_TESLAM3)
+   if (hwRev == HW_BLUEPILL || hwRev == HW_PRIUS)
       timer_set_break_polarity_low(PWM_TIMER);
    else
       timer_set_break_polarity_high(PWM_TIMER);
