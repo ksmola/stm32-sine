@@ -5,7 +5,7 @@ echo "Entering $SCRIPT_NAME"
 
 # build using env variables
 cd ../../..
-make -j4 -r
+make -j$(nproc) -r
 
 if [ -e build/stm32-sine.hex ]; then
     echo "Built successful by $SCRIPT_NAME with $PROJECT_BOARD $DEBUG_LEVEL_OPT and $EXTRA_PARAMS"
