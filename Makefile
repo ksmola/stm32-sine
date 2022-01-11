@@ -177,7 +177,7 @@ INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC) \
           $(HW_LAYER_INC) \
           include \
           libopeninv/include \
-          libopencm3/include/libopencm3/stm32
+          # libopencm3/include/libopencm3/stm32
 
 # Define C warning options here.
 CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes

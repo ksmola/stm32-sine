@@ -24,21 +24,21 @@
 // #include <libopencm3/stm32/rtc.h>
 // #include <libopencm3/stm32/can.h>
 // #include <libopencm3/stm32/iwdg.h>
-// #include "terminal.h"
-// #include "sine_core.h"
-// #include "fu.h"
+#include "terminal.h"
+#include "sine_core.h"
+#include "fu.h"
 // #include "hwdefs.h"
 #include "hwinit.h"
 #include "params.h"
-// #include "param_save.h"
+#include "param_save.h"
 #include "digio.h"
 // #include "anain.h"
 // #include "inc_encoder.h"
 // #include "throttle.h"
 // #include "my_math.h"
 // #include "stm32scheduler.h"
-// #include "pwmgeneration.h"
-// #include "vehiclecontrol.h"
+#include "pwmgeneration.h"
+#include "vehiclecontrol.h"
 #include "hal.h"
 #include "ch.h"
 #include "stm32-sine.h"
@@ -62,6 +62,14 @@ static THD_FUNCTION(Ms100Thread, arg) {
   while (true) {
        
    // DigIo::led_out.Toggle();
+
+   // hard coded for testing:
+   palTogglePad(GPIOC,12);
+   chThdSleepMilliseconds(400);
+   palTogglePad(GPIOC,12);
+   chThdSleepMilliseconds(200);
+
+
    // iwdg_reset();
    // s32fp cpuLoad = FP_FROMINT(PwmGeneration::GetCpuLoad() + scheduler->GetCpuLoad());
    // Param::SetFlt(Param::cpuload, cpuLoad / 10);
@@ -94,9 +102,9 @@ static THD_FUNCTION(Ms100Thread, arg) {
    // Param::SetFlt(Param::uac, uac);
    // #endif // CONTROL
 
-   if (Param::GetInt(Param::canperiod) == CAN_PERIOD_100MS)
+   // if (Param::GetInt(Param::canperiod) == CAN_PERIOD_100MS)
       // can->SendAll();
-   chThdSleepMilliseconds(100);
+   chThdSleepMilliseconds(10);
   }
 }
 
@@ -112,10 +120,10 @@ static THD_FUNCTION(Ms10Thread, arg) {
   static int initWait = 0;
 
   while (true) {     
-   // int opmode = Param::GetInt(Param::opmode);
-   // int chargemode = Param::GetInt(Param::chargemode);
-   // int newMode = MOD_OFF;
-   // int stt = STAT_NONE;
+   int opmode = Param::GetInt(Param::opmode);
+   int chargemode = Param::GetInt(Param::chargemode);
+   int newMode = MOD_OFF;
+   int stt = STAT_NONE;
    // s32fp udc = VehicleControl::ProcessUdc();
 
    // ErrorMessage::SetTime(rtc_get_counter_val());
@@ -249,7 +257,7 @@ static THD_FUNCTION(Ms1Thread, arg) {
       int speed = Param::GetInt(Param::speed);
       if (speedCnt == 0 && speed != 0)
       {
-         DigIo::speed_out.Toggle();
+         // DigIo::speed_out.Toggle();
          speedCnt = Param::GetInt(Param::pwmgain) / (2 * speed);
       }
       else if (speedCnt > 0)
@@ -381,34 +389,37 @@ extern "C" void tim4_isr(void)
 }
 
 void runSine(void) {
+         
+   extern const TERM_CMD TermCmds[];
 
    // initialize hardware
    hwinit();
 
+   int test = parm_load();
+   uint16_t syncOfs = Param::GetInt(Param::syncofs); // sanity check during debugging
+   ErrorMessage::SetTime(1);
+   Param::SetInt(Param::pwmio, pwmio_setup(Param::GetBool(Param::pwmpol)));
+
+   // MotorVoltage::SetMaxAmp(SineCore::MAXAMP);
+   // PwmGeneration::SetCurrentOffset(2048, 2048);
+
    // creates threads
-   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 2, Ms1Thread, NULL);
-   chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO + 1, Ms10Thread, NULL);
-   chThdCreateStatic(waThread3, sizeof(waThread3), NORMALPRIO, Ms100Thread, NULL);
+   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 3, Ms1Thread, nullptr);
+   chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO + 2, Ms10Thread, nullptr);
+   chThdCreateStatic(waThread3, sizeof(waThread3), NORMALPRIO + 1, Ms100Thread, nullptr);
+
+
 }
 
 // extern "C" int main(void)
 // {
 
-   /*
-	 * ChibiOS/RT initialization
-	 */
-   // halInit();
-   // chSysInit();
-
    // extern const TERM_CMD TermCmds[];
-   // initRtc();
    // clock_setup();
    // rtc_setup();
    // hwRev = io_setup();
-   // write_bootloader_pininit();
    // tim_setup();
    // nvic_setup();
-   // //Encoder::Reset();
    // parm_load();
    // ErrorMessage::SetTime(1);
    // Param::SetInt(Param::pwmio, pwmio_setup(Param::GetBool(Param::pwmpol)));
@@ -435,11 +446,13 @@ void runSine(void) {
    //    t.DisableTxDMA();
 
    // UpgradeParameters();
-   // parm_Change(Param::PARAM_LAST);
+   // Param::Change(Param::PARAM_LAST);
+   // Param::Change(Param::nodeid);
+   // Param::Change(Param::bootprec); //rewrite pininit structure if necessary
 
    // while(1)
    //    t.Run();
 
-//    return 0;
+   // return 0;
 // }
 

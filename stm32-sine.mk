@@ -1,6 +1,6 @@
 # set default board
 ifeq ($(PROJECT_BOARD),)
-  PROJECT_BOARD = tesla_SDU
+  PROJECT_BOARD = prius_G2
 endif
 # set default mcu
 ifeq ($(PROJECT_CPU),)
