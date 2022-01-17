@@ -31,6 +31,27 @@
 #define _CHIBIOS_RT_CONF_
 #define _CHIBIOS_RT_CONF_VER_7_0_
 
+
+/*===========================================================================*/
+/**
+ * @name System settings
+ * @{
+ */
+/*===========================================================================*/
+
+/**
+ * @brief   Handling of instances.
+ * @note    If enabled then threads assigned to various instances can
+ *          interact each other using the same synchronization objects.
+ *          If disabled then each OS instance is a separate world, no
+ *          direct interactions are handled by the OS.
+ */
+#if !defined(CH_CFG_SMP_MODE)
+#define CH_CFG_SMP_MODE                     FALSE
+#endif
+
+/** @} */
+
 /*===========================================================================*/
 /**
  * @name System timers settings
@@ -317,7 +338,7 @@
  * @note    Requires @p CH_CFG_USE_HEAP and/or @p CH_CFG_USE_MEMPOOLS.
  */
 #if !defined(CH_CFG_USE_DYNAMIC)
-#define CH_CFG_USE_DYNAMIC                  FALSE
+#define CH_CFG_USE_DYNAMIC                  TRUE
 #endif
 
 /** @} */
@@ -338,7 +359,7 @@
  * @note    Requires @p CH_CFG_USE_SEMAPHORES.
  */
 #if !defined(CH_CFG_USE_MAILBOXES)
-#define CH_CFG_USE_MAILBOXES                FALSE
+#define CH_CFG_USE_MAILBOXES                TRUE
 #endif
 
 /**
@@ -349,7 +370,7 @@
  * @note    The default is @p TRUE.
  */
 #if !defined(CH_CFG_USE_MEMCORE)
-#define CH_CFG_USE_MEMCORE                  FALSE
+#define CH_CFG_USE_MEMCORE                  TRUE
 #endif
 
 /**
@@ -378,7 +399,7 @@
  * @note    Mutexes are recommended.
  */
 #if !defined(CH_CFG_USE_HEAP)
-#define CH_CFG_USE_HEAP                     FALSE
+#define CH_CFG_USE_HEAP                     TRUE
 #endif
 
 /**
@@ -612,7 +633,7 @@
  * @note    The default is @p FALSE.
  */
 #if !defined(CH_DBG_FILL_THREADS)
-#define CH_DBG_FILL_THREADS                 TRUE
+#define CH_DBG_FILL_THREADS                 FALSE
 #endif
 
 /**
@@ -640,6 +661,22 @@
 /**
  * @brief   OS instance structure extension.
  * @details User fields added to the end of the @p ch_system_t structure.
+ */
+#define CH_CFG_SYSTEM_EXTRA_FIELDS                                     \
+  /* Add OS instance custom fields here.*/
+
+/**
+ * @brief   System initialization hook.
+ * @details User initialization code added to the @p chSysInit() function
+ *          just before interrupts are enabled globally.
+ */
+#define CH_CFG_SYSTEM_INIT_HOOK() {                                         \
+  /* Add system initialization code here.*/                                 \
+}
+
+/**
+ * @brief   OS instance structure extension.
+ * @details User fields added to the end of the @p os_instance_t structure.
  */
 #define CH_CFG_OS_INSTANCE_EXTRA_FIELDS                                     \
   /* Add OS instance custom fields here.*/
@@ -763,6 +800,14 @@
  */
 #define CH_CFG_TRACE_HOOK(tep) {                                            \
   /* Trace code here.*/                                                     \
+}
+
+/**
+ * @brief   Runtime Faults Collection Unit hook.
+ * @details This hook is invoked each time new faults are collected and stored.
+ */
+#define CH_CFG_RUNTIME_FAULTS_HOOK(mask) {                                  \
+  /* Faults handling code here.*/                                           \
 }
 
 /** @} */

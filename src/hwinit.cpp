@@ -171,12 +171,12 @@ uint16_t pwmio_setup(bool activeLow)
 {
    palSetPadMode(GPIOC, 12, PAL_MODE_OUTPUT_PUSHPULL); // hard coded for testing
 
-   // uint8_t outputMode = activeLow ? GPIO_MODE_INPUT : GPIO_MODE_OUTPUT_50_MHZ;
-   // uint8_t outputConf = activeLow ? GPIO_CNF_INPUT_FLOAT : GPIO_CNF_OUTPUT_ALTFN_PUSHPULL;
-   // uint16_t actualPattern = gpio_get(GPIOA, GPIO8 | GPIO9 | GPIO10) | gpio_get(GPIOB, GPIO13 | GPIO14 | GPIO15);
+   uint8_t outputMode = activeLow ? GPIO_MODE_INPUT : GPIO_MODE_OUTPUT_50_MHZ;
+   uint8_t outputConf = activeLow ? GPIO_CNF_INPUT_FLOAT : GPIO_CNF_OUTPUT_ALTFN_PUSHPULL;
+   uint16_t actualPattern = gpio_get(GPIOA, GPIO8 | GPIO9 | GPIO10) | gpio_get(GPIOB, GPIO13 | GPIO14 | GPIO15);
 
-   // gpio_set_mode(GPIOA, outputMode, outputConf, GPIO8 | GPIO9 | GPIO10);
-   // gpio_set_mode(GPIOB, outputMode, outputConf, GPIO13 | GPIO14 | GPIO15);
+   gpio_set_mode(GPIOA, outputMode, outputConf, GPIO8 | GPIO9 | GPIO10);
+   gpio_set_mode(GPIOB, outputMode, outputConf, GPIO13 | GPIO14 | GPIO15);
 
    uint8_t outputMode = activeLow ? PAL_MODE_INPUT : PAL_MODE_OUTPUT_PUSHPULL;
    uint16_t actualPattern = palReadPad(PAL_PORT(GPIOA), PAL_PAD(GPIO8 | GPIO9 | GPIO10)) | palReadPad(PAL_PORT(GPIOB), PAL_PAD(GPIO13 | GPIO14 | GPIO15));

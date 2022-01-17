@@ -81,24 +81,21 @@ endif
 ##############################################################################
 # Project, target, sources and paths
 #
-PROJECT_DIR = .
-BOARDS_DIR = $(PROJECT_DIR)/config/boards
-# include $(PROJECT_DIR)/config/boards/$(PROJECT_BOARD)/board.mk
 
 # Define project name here
 PROJECT = stm32-sine
 
-# Target settings.
-MCU  = cortex-m4
+PROJECT_DIR = .
+BOARDS_DIR = $(PROJECT_DIR)/config/boards
 
 # Imported source files and paths.
 CHIBIOS  := ChibiOS
 CONFDIR = $(PROJECT_DIR)/hw_layer/$(CPU_HWLAYER)/cfg
-BUILDDIR := ./build
-DEPDIR   := ./.dep
+BUILDDIR := build
+DEPDIR   := .dep
 
 # # libopencm3 sources
-LIBOPENINVCPPDIR := ./libopeninv/src
+LIBOPENINVCPPDIR := libopeninv/src
 
 include stm32-sine.mk
 # Licensing files.
@@ -108,7 +105,6 @@ include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/$(CPU_STARTUP)
 # HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/hal/ports/STM32/STM32F1xx/platform.mk
-include $(CHIBIOS)/os/hal/boards/STM32F103C8_MINIMAL/board.mk
 include $(CHIBIOS)/os/hal/osal/rt-nil/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
@@ -121,13 +117,16 @@ include $(CHIBIOS)/test/rt/rt_test.mk
 include $(CHIBIOS)/test/oslib/oslib_test.mk
 include $(CHIBIOS)/os/various/cpp_wrappers/chcpp.mk
 
+include $(PROJECT_DIR)/config/boards/$(PROJECT_BOARD)/board.mk
+
 
 # Define linker script file here
-LDSCRIPT = $(STARTUPLD)/STM32F103xG.ld
+LDSCRIPT = $(STARTUPLD)/STM32F103xB.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CSRC = $(ALLCSRC) \
+       hw_layer/$(CPU_HWLAYER)/cfg/board.c \
        $(TESTSRC) 
 
 LIBOPENINVCPP = $(LIBOPENINVCPPDIR)/params.cpp \
@@ -139,7 +138,7 @@ LIBOPENINVCPP = $(LIBOPENINVCPPDIR)/params.cpp \
 HALCONF := $(strip $(shell cat $(CONFDIR)/halconf.h $(CONFDIR)/halconf_community.h | egrep -e "\#define"))
 
 # Add sources from ChibiOS-Contrib submodule
-CHIBIOS_CONTRIB = ./ChibiOS-Contrib
+CHIBIOS_CONTRIB = ChibiOS-Contrib
 
 ifneq ($(findstring HAL_USE_CRC TRUE,$(HALCONF)),)
 HALSRC_CONTRIB += ${CHIBIOS_CONTRIB}/os/hal/src/hal_crc.c \
@@ -187,11 +186,13 @@ CPPWARN = -Wall -Wextra -Wundef
 
 $(info PROJECT_BOARD:  $(PROJECT_BOARD))
 $(info PROJECT_CPU:    $(PROJECT_CPU))
+$(info MCU:            $(MCU))
 $(info CONFDIR:        $(CONFDIR))
 $(info LDSCRIPT:       $(LDSCRIPT))
 $(info HW_LAYER_INC:   $(HW_LAYER_INC))
 $(info CPU_HWLAYER:    $(CPU_HWLAYER))
 $(info HALSRC_CONTRIB: $(HALSRC_CONTRIB))
+$(info board.c: $(BOARDS_DIR)/$(PROJECT_BOARD)/board.c)
 
 #
 # Project, target, sources and paths

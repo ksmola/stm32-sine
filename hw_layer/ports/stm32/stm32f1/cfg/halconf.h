@@ -45,7 +45,7 @@
  * @brief   Enables the ADC subsystem.
  */
 #if !defined(HAL_USE_ADC) || defined(__DOXYGEN__)
-#define HAL_USE_ADC                         FALSE
+#define HAL_USE_ADC                         TRUE
 #endif
 
 /**
@@ -122,7 +122,7 @@
  * @brief   Enables the PWM subsystem.
  */
 #if !defined(HAL_USE_PWM) || defined(__DOXYGEN__)
-#define HAL_USE_PWM                         FALSE
+#define HAL_USE_PWM                         TRUE
 #endif
 
 /**
@@ -173,7 +173,7 @@
  * @brief   Enables the SPI subsystem.
  */
 #if !defined(HAL_USE_SPI) || defined(__DOXYGEN__)
-#define HAL_USE_SPI                         FALSE
+#define HAL_USE_SPI                         TRUE
 #endif
 
 /**
@@ -187,7 +187,7 @@
  * @brief   Enables the UART subsystem.
  */
 #if !defined(HAL_USE_UART) || defined(__DOXYGEN__)
-#define HAL_USE_UART                        FALSE
+#define HAL_USE_UART                        TRUE
 #endif
 
 /**
@@ -259,7 +259,7 @@
  * @brief   Sleep mode related APIs inclusion switch.
  */
 #if !defined(CAN_USE_SLEEP_MODE) || defined(__DOXYGEN__)
-#define CAN_USE_SLEEP_MODE                  TRUE
+#define CAN_USE_SLEEP_MODE                  FALSE
 #endif
 
 /**
