@@ -67,6 +67,19 @@ static THD_FUNCTION(Ms100Thread, arg) {
    palTogglePad(GPIOC,12);
    chThdSleepMilliseconds(400);
    palTogglePad(GPIOC,12);
+
+   // testing of can message:
+   // CANTxFrame frame;
+   // frame.IDE = CAN_IDE_STD;
+   // frame.SID = 0xAB;
+   // frame.RTR = CAN_RTR_DATA;  
+   // frame.DLC = 4;
+   // frame.data8[0] = 0x12;
+   // frame.data8[1] = 0x34;
+   // frame.data8[2] = 0x56;
+   // frame.data8[3] = 0x78;
+   // canTransmit(&CAND1, CAN_ANY_MAILBOX, &frame, TIME_MS2I(100));
+
    chThdSleepMilliseconds(200);
 
 
@@ -392,15 +405,15 @@ void runSine(void) {
          
    extern const TERM_CMD TermCmds[];
 
+   // int test = parm_load();
+   // uint16_t syncOfs = Param::GetInt(Param::syncofs); // sanity check during debugging
+   parm_load();
+   ErrorMessage::SetTime(1);
+      
    // initialize hardware
    hwinit();
-
-   int test = parm_load();
-   uint16_t syncOfs = Param::GetInt(Param::syncofs); // sanity check during debugging
-   ErrorMessage::SetTime(1);
-   Param::SetInt(Param::pwmio, pwmio_setup(Param::GetBool(Param::pwmpol)));
-
-   // MotorVoltage::SetMaxAmp(SineCore::MAXAMP);
+   
+   MotorVoltage::SetMaxAmp(SineCore::MAXAMP);
    // PwmGeneration::SetCurrentOffset(2048, 2048);
 
    // creates threads
