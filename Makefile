@@ -133,6 +133,7 @@ LIBOPENINVCPP = $(LIBOPENINVCPPDIR)/params.cpp \
                 $(LIBOPENINVCPPDIR)/param_save.cpp \
                 $(LIBOPENINVCPPDIR)/crc8.cpp \
                 $(LIBOPENINVCPPDIR)/errormessage.cpp \
+                $(LIBOPENINVCPPDIR)/sine_core.cpp \
                 $(LIBOPENINVCPPDIR)/fu.cpp
 
 HALCONF := $(strip $(shell cat $(CONFDIR)/halconf.h $(CONFDIR)/halconf_community.h | egrep -e "\#define"))
@@ -159,7 +160,6 @@ ALLINC  += ${CHIBIOS_CONTRIB}/os/hal/include
 CPPSRC = $(ALLCPPSRC) \
          $(LIBOPENINVCPP) \
          hw_layer/hwinit.cpp \
-         sine_core.cpp \
          stm32-sine.cpp \
          main.cpp
 
