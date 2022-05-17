@@ -184,6 +184,10 @@ CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes
 # Define C++ warning options here.
 CPPWARN = -Wall -Wextra -Wundef
 
+ifeq ($(MCU),)
+MCU := cortex-m3
+endif
+
 $(info PROJECT_BOARD:  $(PROJECT_BOARD))
 $(info PROJECT_CPU:    $(PROJECT_CPU))
 $(info MCU:            $(MCU))
