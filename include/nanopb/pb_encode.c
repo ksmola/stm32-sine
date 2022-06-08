@@ -51,12 +51,10 @@ static bool checkreturn pb_enc_fixed_length_bytes(pb_ostream_t *stream, const pb
 
 static bool checkreturn buf_write(pb_ostream_t *stream, const pb_byte_t *buf, size_t count)
 {
-    size_t i;
     pb_byte_t *dest = (pb_byte_t*)stream->state;
     stream->state = dest + count;
     
-    for (i = 0; i < count; i++)
-        dest[i] = buf[i];
+    memcpy(dest, buf, count * sizeof(pb_byte_t));
     
     return true;
 }
@@ -65,7 +63,11 @@ pb_ostream_t pb_ostream_from_buffer(pb_byte_t *buf, size_t bufsize)
 {
     pb_ostream_t stream;
 #ifdef PB_BUFFER_ONLY
-    stream.callback = (void*)1; /* Just a marker value */
+    /* In PB_BUFFER_ONLY configuration the callback pointer is just int*.
+     * NULL pointer marks a sizing field, so put a non-NULL value to mark a buffer stream.
+     */
+    static const int marker = 0;
+    stream.callback = &marker;
 #else
     stream.callback = &buf_write;
 #endif
@@ -622,8 +624,9 @@ bool checkreturn pb_encode_varint(pb_ostream_t *stream, pb_uint64_t value)
 bool checkreturn pb_encode_svarint(pb_ostream_t *stream, pb_int64_t value)
 {
     pb_uint64_t zigzagged;
+    pb_uint64_t mask = ((pb_uint64_t)-1) >> 1; /* Satisfy clang -fsanitize=integer */
     if (value < 0)
-        zigzagged = ~((pb_uint64_t)value << 1);
+        zigzagged = ~(((pb_uint64_t)value & mask) << 1);
     else
         zigzagged = (pb_uint64_t)value << 1;
     

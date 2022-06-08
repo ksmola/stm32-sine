@@ -366,12 +366,12 @@ extern "C" int main(void)
    tim_setup();
    nvic_setup();
    parm_load();
-   InvStatus statusmessage = InvStatus_init_zero;
+   InvConfig configmessage = InvConfig_init_zero;
    InvHeader header = InvHeader_init_zero;
    header.seqno = 5;
    header.has_seqno = 1;
-   statusmessage.Header = header;
-   statusmessage.has_Header = 1;
+   configmessage.Header = header;
+   configmessage.has_Header = 1;
    InvConfigParams conf_params = InvConfigParams_init_zero;
    conf_params.motorParamCommon.polepairs = 2;
    conf_params.motorParamCommon.encmode = InvMotorParamCommon_InvEncModes_ENCMODE_RESOLVER;
