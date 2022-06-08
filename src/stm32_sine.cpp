@@ -41,6 +41,7 @@
 #include "pwmgeneration.h"
 #include "temp_meas.h"
 #include "vehiclecontrol.h"
+#include "inverter.pb.h"
 
 HWREV hwRev; //Hardware variant of board we are running on
 
@@ -368,6 +369,18 @@ extern "C" int main(void)
    tim_setup();
    nvic_setup();
    parm_load();
+   InvStatus statusmessage = InvStatus_init_zero;
+   InvHeader header = InvHeader_init_zero;
+   header.seqno = 5;
+   header.has_seqno = 1;
+   statusmessage.Header = header;
+   statusmessage.has_Header = 1;
+   InvConfigParams conf_params = InvConfigParams_init_zero;
+   conf_params.motorParamCommon.polepairs = 2;
+   conf_params.motorParamCommon.encmode = InvMotorParamCommon_InvEncModes_ENCMODE_RESOLVER;
+   
+   // pb_ostream_t output = pb_ostream_from_buffer();
+   // pb_encode();
    ErrorMessage::SetTime(1);
    Param::SetInt(Param::pwmio, pwmio_setup(Param::GetBool(Param::pwmpol)));
 

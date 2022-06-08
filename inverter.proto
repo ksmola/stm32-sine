@@ -1,0 +1,305 @@
+// Definition of Inverter communication
+//
+// messages of type InvStatus are sent from the inverter controller
+// messages of type InvConfig are sent to the inverter controller
+//
+syntax = "proto2";
+
+message InvHeader
+{
+    optional uint32 seqno = 1; // sequence number (to be able to find lost messages)
+    optional uint32 tm = 2;    // controller send time stamp in ms
+
+    enum MessageType {
+        MSGTYPE_UNDEFINED = 0;
+        MSGTYPE_COMMAND = 1;			// for future use
+        MSGTYPE_DATA = 2;				// sent by inverter controller
+    }
+
+    optional MessageType  mtype = 3 [default = MSGTYPE_UNDEFINED];
+}
+
+enum InvOnOff {
+    INV_OFF = 0;
+    INV_ON = 1;
+    INV_NA = 2;
+}
+
+message InvMotorParamCommon   // common (sine/foc) motor config parameters
+{
+    optional float polepairs = 1;
+    optional float respolepairs = 2;
+    optional float sincosofs = 3;
+
+    enum InvEncModes {
+        ENCMODE_SINGLE = 0;
+        ENCMODE_AB = 1;
+        ENCMODE_ABZ = 2;
+        ENCMODE_SPI = 3;
+        ENCMODE_RESOLVER = 4;
+        ENCMODE_SINCOS = 5;
+    }
+    optional InvEncModes encmode = 4;
+
+    optional float fmax = 5;
+    optional float numimp = 6;
+    optional float dirchrpm = 7;
+
+    enum InvDirModes {
+        DIRMODE_BUTTON = 0;
+        DIRMODE_SWITCH = 1;
+        DIRMODE_BUTTON_REVERSED = 2;
+        DIRMODE_SWITCH_REVERSED = 3;
+        DIRMODE_DEFAULT_FORWARD = 4;
+    }
+    optional InvDirModes dirmode = 8;
+
+    enum InvSnsM {
+        SNS_M_KTY83_110 = 12;
+        SNS_M_KTY84_130 = 13;
+        SNS_M_LEAF = 14;
+        SNS_M_KTY81_110 = 15;
+        SNS_M_TOYOTA = 16;
+        SNS_M_OUTLANDER_FRONT = 21;
+    }
+    optional float snsm = 9;
+}
+
+message InvMotorParamSine   // sine specific motor config parameters
+{
+    optional float boost = 1;
+    optional float fweak = 2;
+    optional float fweakstrt = 3;
+    optional float fconst = 4;
+    optional float udcnom = 5;
+    optional float fslipmin = 6;
+    optional float fslipmax = 7;
+    optional float fslipconstmax = 8;
+}
+
+message InvMotorParamFOC   // FOC specific motor config parameters
+{
+    optional float curkp = 1;
+    optional float curki = 2;
+    optional float curkifrqgain = 3;
+    optional float fwkp = 4;
+    optional float ffwstart = 5;
+    optional float syncofs = 6;
+    optional float syncadv = 7;
+}
+
+message InvInverterParamCommon  // common (sine/foc) inverter config parameters
+{
+    enum InvPWMFreq {
+        PWM_FREQ_17_6KHZ = 0;
+        PWM_FREQ_8_8KHZ = 1;
+        PWM_FREQ_4_4KHZ = 2;
+    }
+    optional InvPWMFreq pwmfrq = 1;
+
+    enum InvPWMPols {
+        PWM_POLS_ACT_HIGH = 0;
+        PWM_POLS_ACT_LOW = 1;
+    }
+    optional InvPWMPols pwmpol = 2;
+
+    optional float deadtime = 3;
+    optional float ocurlim = 4;
+    optional float il1gain = 5;
+    optional float il2gain = 6;
+    optional float udcgain = 7; 
+    optional float udcofs = 8;
+    optional float udclim = 9;
+
+    enum InvSNS_HS {
+        SNS_HS_JCURVE = 0;
+        SNS_HS_SEMIKRON = 1;
+        SNS_HS_MBB600 = 2;
+        SNS_HS_KTY81 = 3;
+        SNS_HS_PT1000 = 4;
+        SNS_HS_NTCK45_2K2 = 5;
+        SNS_HS_LEAF = 6;
+        SNS_HS_BMW_I3 = 7;
+    }
+
+    optional InvSNS_HS snshs  = 10;
+}
+
+message InvInverterParamFOC  // FOC specific motor config parameters
+{
+    enum InvPinSwap {
+        PINSWAP_NONE = 0;
+        PINSWAP_CURRENTS_1_2 = 1;
+        PINSWAP_SINCOS = 2;
+        PINSWAP_PWMOUTPUT_1_3 = 4;
+        PINSWAP_PWMOUTPUT_2_3 = 8;
+    }
+    optional InvPinSwap pinswap = 1;
+}
+
+message InvDerateParamCommon    // common (sine/foc) derate config parameters
+{
+    optional float bmslimhigh = 1; 
+    optional float bmslimlow = 2; 
+    optional float udcmin = 3; 
+    optional float udcmax = 4; 
+    optional float idcmax = 5; 
+    optional float idcmin = 6; 
+    optional float idckp = 7; 
+    optional float idcflt = 8; 
+    optional float tmphsmax = 9; 
+    optional float tmpmmax = 10; 
+    optional float throtmax = 11; 
+    optional float throtmin = 12; 
+}
+
+message InvDerateParamSine    // sine specific derate config parameters
+{
+    optional float iacmax = 1; 
+    optional float ifltrise = 2; 
+    optional float ifltfall = 3; 
+}
+
+message InvChargingParam    // charging config parameters
+{
+    enum InvChargeMode {
+        CHARGEMODE_OFF = 0;
+        CHARGEMODE_BOOST = 3;
+        CHARGEMODE_BUCK = 4;
+
+    }
+    optional InvChargeMode chargemode   = 1; 
+    optional float chargecur = 2; 
+    optional float chargekp = 3; 
+    optional float chargeki = 4; 
+    optional float chargeflt = 5; 
+    optional float chargepwmin = 6; 
+    optional float chargepwmax = 7; 
+}
+
+message InvThrottleParamCommon    // common (sine/foc) throttle config parameters
+{
+    optional float potmin = 1; 
+    optional float potmax = 2; 
+    optional float pot2min = 3; 
+    optional float pot2max = 4; 
+
+    enum InvPotMode {
+        POTMODE_SINGLE_REGEN = 0;
+        POTMODE_DUAL_CHAN = 1;
+        POTMODE_CAN = 2;
+        POTMODE_CAN_DUAL = 3;
+    }
+    optional InvPotMode potmode = 5; 
+    optional float throtramp = 6; 
+    optional float throtramprpm = 7; 
+}
+
+message InvThrottleParamSine    // sine specific throttle config parameters
+{
+    optional float ampmin = 1; 
+    optional float slipstart = 2; 
+}
+
+message InvThrottleParamFOC    // FOC specific throttle config parameters
+{
+    optional float throtcur = 1; 
+}
+
+message InvRegenParam    // regen config parameters
+{
+    optional float brknompedal = 1; 
+    optional float regenramp = 2; 
+    optional float brknom = 3; 
+    optional float brkmax = 4; 
+    optional float brkcruise = 5; 
+    optional float brkrampstr = 6; 
+    optional float brkout = 7;    
+}
+
+message InvAutConPwmParamCommon    // common (sine/foc) automation/contact/pwm config parameters
+{
+    optional float idlespeed = 1; 
+    optional float idlethrotlim = 2; 
+
+    enum InvIdleMode {
+        IDLEMODE_ALWAYS = 0;
+        IDLEMODE_NOBRAKE = 1;
+        IDLEMODE_CRUISE = 2;
+        IDLEMODE_OFF = 3;
+    }
+    optional InvIdleMode idlemode = 3; 
+    optional float speedkp = 4; 
+    optional float speedflt = 5; 
+    enum InvBtnSwitch {
+        BTNSWITCH_BUTTON = 0;
+        BTNSWITCH_SWITCH = 1;
+        BTNSWITCH_CAN = 2;
+    }
+    optional InvBtnSwitch cruisemode = 6; 
+    optional float udcsw = 7; 
+    optional float udcswbuck = 8;
+    enum InvTripMode {
+        TRIPMODE_ALL_OFF = 0;
+        TRIPMODE_DCSW_ON = 1;
+        TRIPMODE_PRECHARGE_ONLY = 2;
+        TRIPMODE_AUTO_RESUME = 3;
+    }
+    optional InvTripMode tripmode = 9; 
+    optional InvOnOff bootprec = 10; 
+    enum InvPWMFuncs {
+        PWMFUNCS_TMPM = 0;
+        PWMFUNCS_TMPHS = 1;
+        PWMFUNCS_SPEED = 2;
+        PWMFUNCS_SPEEDFRQ = 3;
+    }
+    optional InvPWMFuncs pwmfunc = 11; 
+    optional float pwmgain = 12; 
+    optional float pwmofs = 13;
+    enum InvCANSpeeds {
+        CANSPEED_250K = 0;
+        CANSPEED_500K = 1;
+        CANSPEED_800K = 2;
+        CANSPEED_1M = 3;
+    }
+    optional InvCANSpeeds canspeed = 14; 
+    enum InvCANPeriod {
+        CANPERIOD_100MS = 0;
+        CANPERIOD_10MS = 1;
+    }
+    optional InvCANPeriod canperiod = 15; 
+    optional float nodeid = 16; 
+
+}
+
+message InvConfigParams
+{
+    optional InvMotorParamCommon	    motorParamCommon = 2;
+    optional InvMotorParamSine          motorParamSine = 3;
+    optional InvMotorParamFOC	        motorParamFOC = 4;
+    optional InvInverterParamCommon     inverterParamCommon = 5;
+    optional InvInverterParamFOC	    inverterParamFOC = 6;
+    optional InvDerateParamCommon	    derateParamCommon = 7;
+    optional InvDerateParamSine	        derateParamSine = 8;
+    optional InvChargingParam		    chargingParam = 9;
+    optional InvThrottleParamCommon     throttleParamCommon = 10;
+    optional InvThrottleParamSine       throttleParamSine = 11;
+    optional InvThrottleParamFOC        throttleParamFOC = 12;
+    optional InvRegenParam              regenParam = 13;
+    optional InvAutConPwmParamCommon    autConPwmParamCommon = 14;
+}
+
+// Inverter controller outbound message, sent from the config tool
+message InvStatus
+{
+    optional InvHeader				    Header = 1;
+    optional InvConfigParams            Config = 2;
+}
+
+
+// Inverter controller inbound message, sent from inverter controller
+message InvConfig
+{
+    optional InvHeader		    Header = 1;
+    optional InvConfigParams    Config = 2;
+}
