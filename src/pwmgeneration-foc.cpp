@@ -48,7 +48,7 @@ void PwmGeneration::Run()
 {
    if (opmode == MOD_MANUAL || opmode == MOD_RUN)
    {
-      static s32fp frqFiltered = 0, idcFiltered = 0;
+      static s32fp idcFiltered = 0;
       int dir = Param::GetInt(Param::dir);
       int moddedfwkp;
       int kifrqgain = Param::GetInt(Param::curkifrqgain);
@@ -142,22 +142,9 @@ void PwmGeneration::Run()
    }
 }
 
-void PwmGeneration::SetTorquePercent(s32fp torquePercent)
+void PwmGeneration::SetTorquePercent(float torquePercent)
 {
-   s32fp brkrampstr = Param::Get(Param::brkrampstr);
-   int direction = Param::GetInt(Param::dir);
-
-   if (frq < brkrampstr && torquePercent < 0)
-   {
-      torquePercent = FP_MUL(FP_DIV(frq, brkrampstr), torquePercent);
-   }
-
-   if (torquePercent < 0)
-   {
-      direction = Encoder::GetRotorDirection();
-   }
-
-   int32_t is = FP_TOINT(FP_MUL(Param::Get(Param::throtcur), direction * torquePercent));
+   int32_t is = Param::GetFloat(Param::throtcur) * torquePercent;
    int32_t id, iq;
 
    FOC::Mtpa(is, id, iq);
@@ -188,7 +175,7 @@ void PwmGeneration::PwmInit()
    qController.SetMinMaxY(-maxVd, maxVd);
    dController.ResetIntegrator();
    dController.SetCallingFrequency(pwmfrq);
-   dController.SetMinMaxY(-maxVd, maxVd / 2);
+   dController.SetMinMaxY(-maxVd, maxVd);
    fwController.ResetIntegrator();
    fwController.SetCallingFrequency(pwmfrq);
    fwController.SetMinMaxY(-50 * Param::Get(Param::throtcur), 0); //allow 50% of max current for extra field weakening
@@ -247,7 +234,7 @@ void PwmGeneration::CalcNextAngleSync(int dir)
    {
       uint16_t syncOfs = Param::GetInt(Param::syncofs);
       uint16_t rotorAngle = Encoder::GetRotorAngle();
-      int syncadv = (frq - FP_FROMINT(20)) * Param::GetInt(Param::syncadv);
+      int syncadv = frqFiltered * Param::GetInt(Param::syncadv);
       syncadv = MAX(0, syncadv);
 
       //Compensate rotor movement that happened between sampling and processing

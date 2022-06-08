@@ -31,6 +31,7 @@ float Throttle::brkcruise;
 int Throttle::idleSpeed;
 int Throttle::cruiseSpeed;
 float Throttle::speedkp;
+float Throttle::holdkp;
 int Throttle::speedflt;
 int Throttle::speedFiltered;
 float Throttle::idleThrotLim;
@@ -74,6 +75,7 @@ bool Throttle::CheckAndLimitRange(int* potval, int potIdx)
 float Throttle::DigitsToPercent(int potval, int potidx)
 {
    if (potidx > 1) return 0;
+   if (potmax[potidx] == potmin[potidx]) return 100.0f;
 
    return (100 * (potval - potmin[potidx])) / (potmax[potidx] - potmin[potidx]);
 }
@@ -83,7 +85,7 @@ float Throttle::CalcThrottle(float potnom, float pot2nom, bool brkpedal)
    float scaledBrkMax = brkpedal ? brknompedal : brkmax;
 
    //Never reach 0, because that can spin up the motor
-   scaledBrkMax = -1 + (scaledBrkMax * pot2nom) / 100;
+   scaledBrkMax = -0.1 + (scaledBrkMax * pot2nom) / 100.0f;
 
    if (brkpedal)
    {
@@ -103,6 +105,24 @@ float Throttle::CalcThrottle(float potnom, float pot2nom, bool brkpedal)
    return potnom;
 }
 
+float Throttle::CalcThrottleBiDir(float potval, bool brkpedal)
+{
+   if (brkpedal) return 0; //in bidir mode brake pedal sends motor to idle
+
+   if (ABS(potval - 50.0f) <= (brknom / 2)) potval = 50.0f;
+
+   float bidirPotval = 2 * potval - 100.0f;
+
+   if (bidirPotval < 0)
+      bidirPotval += brknom;
+   else if (bidirPotval > 0)
+      bidirPotval -= brknom;
+
+   bidirPotval *= (100.0f + brknom) / 100.0f;
+
+   return bidirPotval;
+}
+
 float Throttle::RampThrottle(float potnom)
 {
    potnom = MIN(potnom, throtmax);
@@ -111,20 +131,18 @@ float Throttle::RampThrottle(float potnom)
    if (potnom >= throttleRamped)
    {
       throttleRamped = RAMPUP(throttleRamped, potnom, throttleRamp);
-      potnom = throttleRamped;
    }
-   else if (potnom < throttleRamped && potnom > 0)
+   else if (potnom < throttleRamped && throttleRamped > 5)
    {
-      throttleRamped = potnom; //No ramping from high throttle to low throttle
+      throttleRamped = RAMPDOWN(throttleRamped, potnom, throttleRamp);
    }
    else //potnom < throttleRamped && potnom <= 0
    {
-      throttleRamped = MIN(0, throttleRamped); //start ramping at 0
+      //throttleRamped = MIN(0, throttleRamped); //start ramping at 0
       throttleRamped = RAMPDOWN(throttleRamped, potnom, regenRamp);
-      potnom = throttleRamped;
    }
 
-   return potnom;
+   return throttleRamped;
 }
 
 float Throttle::CalcIdleSpeed(int speed)
@@ -143,6 +161,16 @@ float Throttle::CalcCruiseSpeed(int speed)
    potnom = MAX(brkcruise, potnom);
 
    return potnom;
+}
+
+bool Throttle::HoldPosition(int distance, float& finalSpnt)
+{
+   //do not act when rolling forward and exit hill hold mode
+   if (distance > 10000) return false;
+   finalSpnt = (holdkp * distance) / 1000;
+   finalSpnt = MIN(idleThrotLim, finalSpnt);
+   finalSpnt = MAX(0, finalSpnt);
+   return true;
 }
 
 bool Throttle::TemperatureDerate(float temp, float tempMax, float& finalSpnt)
