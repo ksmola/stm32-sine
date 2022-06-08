@@ -1,14 +1,14 @@
 // Definition of Inverter communication
 //
-// messages of type InvStatus are sent from the inverter controller
-// messages of type InvConfig are sent to the inverter controller
+// messages of type InvTelem are sent from the inverter controller
+// messages of type InvConfig are sent from/to the inverter controller
 //
 syntax = "proto2";
 
 message InvHeader
 {
     optional uint32 seqno = 1; // sequence number (to be able to find lost messages)
-    optional uint32 tm = 2;    // controller send time stamp in ms
+    optional uint32 tm = 2;    // controller msg time stamp in ms
 
     enum MessageType {
         MSGTYPE_UNDEFINED = 0;
@@ -208,13 +208,13 @@ message InvThrottleParamFOC    // FOC specific throttle config parameters
 
 message InvRegenParam    // regen config parameters
 {
-    optional float brknompedal = 1; 
+    optional float brakeregen = 1; 
     optional float regenramp = 2; 
-    optional float brknom = 3; 
-    optional float brkmax = 4; 
-    optional float brkcruise = 5; 
-    optional float brkrampstr = 6; 
-    optional float brkout = 7;    
+    optional float regentravel = 3; 
+    optional float offthrotregen = 4; 
+    optional float cruiseregen = 5; 
+    optional float regenrampstr = 6; 
+    optional float brklightout = 7;    
 }
 
 message InvAutConPwmParamCommon    // common (sine/foc) automation/contact/pwm config parameters
@@ -229,77 +229,205 @@ message InvAutConPwmParamCommon    // common (sine/foc) automation/contact/pwm c
         IDLEMODE_OFF = 3;
     }
     optional InvIdleMode idlemode = 3; 
-    optional float speedkp = 4; 
-    optional float speedflt = 5; 
+    optional float holdkp = 4;
+    optional float speedkp = 5; 
+    optional float speedflt = 6; 
     enum InvBtnSwitch {
         BTNSWITCH_BUTTON = 0;
         BTNSWITCH_SWITCH = 1;
         BTNSWITCH_CAN = 2;
     }
-    optional InvBtnSwitch cruisemode = 6; 
-    optional float udcsw = 7; 
-    optional float udcswbuck = 8;
+    optional InvBtnSwitch cruisemode = 7; 
+    optional float udcsw = 8; 
+    optional float udcswbuck = 9;
     enum InvTripMode {
         TRIPMODE_ALL_OFF = 0;
         TRIPMODE_DCSW_ON = 1;
         TRIPMODE_PRECHARGE_ONLY = 2;
         TRIPMODE_AUTO_RESUME = 3;
     }
-    optional InvTripMode tripmode = 9; 
-    optional InvOnOff bootprec = 10; 
+    optional InvTripMode tripmode = 10; 
+    optional InvOnOff bootprec = 11; 
     enum InvPWMFuncs {
         PWMFUNCS_TMPM = 0;
         PWMFUNCS_TMPHS = 1;
         PWMFUNCS_SPEED = 2;
         PWMFUNCS_SPEEDFRQ = 3;
     }
-    optional InvPWMFuncs pwmfunc = 11; 
-    optional float pwmgain = 12; 
-    optional float pwmofs = 13;
+    optional InvPWMFuncs pwmfunc = 12; 
+    optional float pwmgain = 13; 
+    optional float pwmofs = 14;
     enum InvCANSpeeds {
         CANSPEED_250K = 0;
         CANSPEED_500K = 1;
         CANSPEED_800K = 2;
         CANSPEED_1M = 3;
     }
-    optional InvCANSpeeds canspeed = 14; 
+    optional InvCANSpeeds canspeed = 15; 
     enum InvCANPeriod {
         CANPERIOD_100MS = 0;
         CANPERIOD_10MS = 1;
     }
-    optional InvCANPeriod canperiod = 15; 
-    optional float nodeid = 16; 
-
+    optional InvCANPeriod canperiod = 16; 
+    optional float nodeid = 17; 
 }
 
 message InvConfigParams
 {
-    optional InvMotorParamCommon	    motorParamCommon = 2;
-    optional InvMotorParamSine          motorParamSine = 3;
-    optional InvMotorParamFOC	        motorParamFOC = 4;
-    optional InvInverterParamCommon     inverterParamCommon = 5;
-    optional InvInverterParamFOC	    inverterParamFOC = 6;
-    optional InvDerateParamCommon	    derateParamCommon = 7;
-    optional InvDerateParamSine	        derateParamSine = 8;
-    optional InvChargingParam		    chargingParam = 9;
-    optional InvThrottleParamCommon     throttleParamCommon = 10;
-    optional InvThrottleParamSine       throttleParamSine = 11;
-    optional InvThrottleParamFOC        throttleParamFOC = 12;
-    optional InvRegenParam              regenParam = 13;
-    optional InvAutConPwmParamCommon    autConPwmParamCommon = 14;
+    optional InvMotorParamCommon	    motorParamCommon = 1;
+    optional InvMotorParamSine          motorParamSine = 2;
+    optional InvMotorParamFOC	        motorParamFOC = 3;
+    optional InvInverterParamCommon     inverterParamCommon = 4;
+    optional InvInverterParamFOC	    inverterParamFOC = 5;
+    optional InvDerateParamCommon	    derateParamCommon = 6;
+    optional InvDerateParamSine	        derateParamSine = 7;
+    optional InvChargingParam		    chargingParam = 8;
+    optional InvThrottleParamCommon     throttleParamCommon = 9;
+    optional InvThrottleParamSine       throttleParamSine = 10;
+    optional InvThrottleParamFOC        throttleParamFOC = 11;
+    optional InvRegenParam              regenParam = 12;
+    optional InvAutConPwmParamCommon    autConPwmParamCommon = 13;
 }
 
-// Inverter controller outbound message, sent from the config tool
-message InvStatus
+
+message InvTelemBlockOne
 {
-    optional InvHeader				    Header = 1;
-    optional InvConfigParams            Config = 2;
+    optional string version = 1;
+    enum InvHWrevs {
+        HW_REV1 = 0;
+        HW_REV2 = 1;
+        HW_REV3 = 2;
+        HW_TESLA = 3;
+        HW_BLUEPILL = 4;
+        HW_PRIUS = 5;
+    }
+    optional InvHWrevs hwver = 2;
+    enum InvOPmodes {
+        OPMODE_OFF = 0;
+        OPMODE_RUN = 1;
+        OPMODE_MANUAL_RUN = 2;
+        OPMODE_BOOST = 3;
+        OPMODE_BUCK = 4;
+        OPMODE_SINE = 5;
+        OPMODE_ACHEAT = 6;
+    }
+    optional InvOPmodes opmode = 3;
+    optional string lasterr = 4;
+    enum InvStatus {
+        STAT_NONE = 0;
+        STAT_UDCLOW = 1;
+        STAT_UDCHIGH = 2;
+        STAT_UDCBELOWUDCSW = 4;
+        STAT_UDCLIM = 8;
+        STAT_EMCYSTOP = 16;
+        STAT_MPROT = 32;
+        STAT_POTPRESSED = 64;
+        STAT_TMPHS = 128;
+        STAT_WAITSTART = 256;
+    }
+    optional InvStatus status = 5;
+    optional float udc = 6;
+    optional float idc = 7;
+    optional float il1 = 8;
+    optional float il2 = 9;
 }
 
+message InvTelemBlockTwo
+{
+    optional float fstat = 1;
+    optional float speed = 2;
+    optional float cruisespeed = 3;
+    optional float turns = 4;
+    optional float amp = 5;
+    optional float angle = 6;
+    optional float pot = 7;
+    optional float pot2 = 8;
+    optional float potnom = 9;
+    enum InvDirs {
+        DIR_REVERSE = -1;
+        DIR_NEUTRAL = 0;
+        DIR_FORWARD = 1;
+    }
+    optional InvDirs dir = 10;
+    optional float tmphs = 11;
+    optional float tmpm = 12;
+    optional float uaux = 13;
+    optional float pwmio = 14;
+    enum InvCanIOs {
+        CANIO_CRUISE = 1;
+        CANIO_START = 2;
+        CANIO_BRAKE = 4;
+        CANIO_FWD = 8;
+        CANIO_REV = 16;
+        CANIO_BMS = 32;
+    }
+    optional InvCanIOs canio = 15;
+    optional InvOnOff din_cruise = 16;
+    optional InvOnOff din_start = 17;
+    optional InvOnOff din_brake = 18;
+    enum InvOKERR {
+        OKERR_ERROR = 0;
+        OKERR_OK = 1;
+        OKERR_NA = 2;
+    }
+    optional InvOKERR din_mprot = 19;
+    optional InvOnOff din_forward = 20;
+    optional InvOnOff din_reverse = 21;
+    optional InvOKERR din_emcystop = 22;
+    optional InvOKERR din_ocur = 23;
+    optional InvOKERR din_desat = 24;
+    optional InvOnOff din_bms = 25;
+    optional float cpuload = 26;
+}
 
-// Inverter controller inbound message, sent from inverter controller
+message InvTelemSine
+{
+    optional float ilmax = 1;
+    optional float uac = 2;
+    optional float il1rms = 3;
+    optional float il2rms = 4;
+    optional float boostcalc = 5;
+    optional float fweakcalc = 6;
+}
+
+message InvTelemFOC
+{
+    optional float id = 1;
+    optional float iq = 2;
+    optional float ifw = 3;
+    optional float ud = 4;
+    optional float uq = 5;
+
+}
+
+message InvTelemParams
+{
+    optional InvTelemBlockOne           telemBlockOne = 1;
+    optional InvTelemBlockTwo           telemBlockTwo = 2;
+    optional InvTelemSine               telemSine     = 3;
+    optional InvTelemFOC                telemFOC      = 4;
+}
+
+/**
+ * Inverter controller in/outbound message
+ *
+ * Contains configuration parameters.
+ * Used to configure settings.
+ */
+
 message InvConfig
 {
     optional InvHeader		    Header = 1;
     optional InvConfigParams    Config = 2;
+}
+
+/**
+ * Inverter controller outbound message
+ * 
+ * Contains most recent live "telemetry" data.
+ */
+ message InvTelem
+{
+    optional InvHeader          Header = 1;
+    optional InvTelemParams     Config = 2;
 }
