@@ -369,9 +369,9 @@ extern "C" int main(void)
    InvConfig configmessage = InvConfig_init_zero;
    InvHeader header = InvHeader_init_zero;
    header.seqno = 5;
-   header.has_seqno = 1;
+   header.has_seqno = true;
    configmessage.Header = header;
-   configmessage.has_Header = 1;
+   configmessage.has_Header = true;
    InvConfigParams conf_params = InvConfigParams_init_zero;
    conf_params.motorParamCommon.polepairs = 2;
    conf_params.motorParamCommon.encmode = InvMotorParamCommon_InvEncModes_ENCMODE_RESOLVER;
