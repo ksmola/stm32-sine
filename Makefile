@@ -54,7 +54,7 @@ ifeq ($(CONTROL), FOC)
 endif
 
 OBJS     = $(patsubst %.o,obj/%.o, $(OBJSL))
-vpath %.c src/ libopeninv/src
+vpath %.c src/ libopeninv/src nanopb/
 vpath %.cpp src/ libopeninv/src
 
 OPENOCD_BASE	= /usr
