@@ -403,7 +403,7 @@ extern "C" void tim4_isr(void)
 
 void runSine(void) {
          
-   extern const TERM_CMD TermCmds[];
+   // extern const TERM_CMD TermCmds[];
 
    // int test = parm_load();
    // uint16_t syncOfs = Param::GetInt(Param::syncofs); // sanity check during debugging
